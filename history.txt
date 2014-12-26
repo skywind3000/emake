@@ -1,0 +1,11 @@
+May.31 2012  version 3.02
+- mac os -dynamiclib support
+- using subprocess module instead of popen
+- fixed some bug
+
+May.26 2012  version 3.01
+- new: multiprocess build system !! 
+- new: optimize source preprocessing, speed up 200%
+- new: -cmdline supported
+
+
