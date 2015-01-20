@@ -2419,31 +2419,16 @@ def __update_file(name, content):
 
 def getemake():
 	import urllib2
-	url1 = 'https://raw.githubusercontent.com/skywind3000/emake/master/emake.py'
-	url2 = 'http://easymake.googlecode.com/svn/trunk/emake.py'
-	url3 = 'http://www.joynb.net/php/getemake.php'
+	url1 = 'http://easymake.googlecode.com/svn/trunk/emake.py'
+	url2 = 'http://www.joynb.net/php/getemake.php'
 	success = True
 	content = ''
-	try:
-		import ssl
-		ctx = ssl.create_default_context();
-		ctx.check_hostname = False
-		ctx.verify_mode = ssl.CERT_NONE
-	except:
-		ctx = None
-	for url in (url2, url3, url1):
+	for url in (url1, url2):
 		print 'fetching ', url, ' ...',
 		sys.stdout.flush();
 		success = True
 		try:
-			content = urllib2.urlopen(url, context = ctx).read()
-		except TypeError, e:
-			try:
-				content = urllib2.urlopen(url).read()
-			except:
-				success = False
-				print 'failed '
-				print e
+			content = urllib2.urlopen(url).read()
 		except urllib2.URLError, e:
 			success = False
 			print 'failed '
