@@ -2424,7 +2424,7 @@ def getemake():
 	success = True
 	content = ''
 	for url in (url1, url2):
-		print 'fetching ', url, ' ...',
+		print 'fetching', url, ' ...',
 		sys.stdout.flush();
 		success = True
 		try:
