@@ -2431,7 +2431,7 @@ def getemake():
 		ctx.verify_mode = ssl.CERT_NONE
 	except:
 		ctx = None
-	for url in (url1, url2, url3):
+	for url in (url2, url3, url1):
 		print 'fetching ', url, ' ...',
 		sys.stdout.flush();
 		success = True
