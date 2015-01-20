@@ -2419,35 +2419,30 @@ def __update_file(name, content):
 
 def getemake():
 	import urllib2
-	url1 = 'http://easymake.googlecode.com/svn/trunk/emake.py'
-	url2 = 'http://www.joynb.net/php/getemake.php'
+	url1 = 'https://raw.githubusercontent.com/skywind3000/emake/master/emake.py'
+	url2 = 'http://easymake.googlecode.com/svn/trunk/emake.py'
+	url3 = 'http://www.joynb.net/php/getemake.php'
 	success = True
 	content = ''
-	print 'fetching ', url1, ' ...',
-	sys.stdout.flush();
-	try:
-		content = urllib2.urlopen(url1).read()
-	except urllib2.URLError, e:
-		success = False
-		print 'failed '
-		print e
-	if not content: 
-		success = False
-	if success:
-		print 'ok'
-		return content
-	success = True
-	print 'fetching ', url2, ' ...',
-	sys.stdout.flush();
-	try:
-		content = urllib2.urlopen(url2).read()
-	except urllib2.URLError, e:
-		success = False
-		print 'failed '
-		print e
-	if success:
-		print 'ok'
-		return content
+	for url in (url1, url2, url3):
+		print 'fetching ', url, ' ...',
+		sys.stdout.flush();
+		success = True
+		try:
+			content = urllib2.urlopen(url).read()
+		except urllib2.URLError, e:
+			success = False
+			print 'failed '
+			print e
+		if not content: 
+			success = False
+		head = content.split('\n')[0].strip('\r\n\t ')
+		if head != '#! /usr/bin/env python':
+			success = False
+			print 'error'
+		if success:
+			print 'ok'
+			return content
 	return ''
 
 def update():
@@ -2473,7 +2468,7 @@ def update():
 	return 0
 
 def help():
-	print "Emake v3.31 Apr.15 2014"
+	print "Emake v3.32 Jan.20 2015"
 	print "By providing a completely new way to build your projects, Emake"
 	print "is a easy tool which controls the generation of executables and other"
 	print "non-source files of a program from the program's source files. "
@@ -2561,7 +2556,7 @@ def main(argv = None):
 			break
 
 	if len(argv) == 1:
-		version = '(emake v3.31 Apr.15 2014 %s)'%sys.platform
+		version = '(emake v3.32 Jan.20 2015 %s)'%sys.platform
 		print 'usage: "emake.py [option] srcfile" %s'%version
 		print 'options  :  -b | -build      build project'
 		print '            -c | -compile    compile project'
