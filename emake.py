@@ -2437,6 +2437,13 @@ def getemake():
 		success = True
 		try:
 			content = urllib2.urlopen(url, context = ctx).read()
+		except TypeError, e:
+			try:
+				content = urllib2.urlopen(url).read()
+			except:
+				success = False
+				print 'failed '
+				print e
 		except urllib2.URLError, e:
 			success = False
 			print 'failed '
