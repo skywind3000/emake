@@ -2433,12 +2433,11 @@ def getemake():
 			success = False
 			print 'failed '
 			print e
-		if not content: 
-			success = False
 		head = content.split('\n')[0].strip('\r\n\t ')
 		if head != '#! /usr/bin/env python':
+			if success:
+				print 'error'
 			success = False
-			print 'error'
 		if success:
 			print 'ok'
 			return content
