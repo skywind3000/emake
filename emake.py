@@ -2424,12 +2424,19 @@ def getemake():
 	url3 = 'http://www.joynb.net/php/getemake.php'
 	success = True
 	content = ''
+	try:
+		import ssl
+		ctx = ssl.create_default_context();
+		ctx.check_hostname = False
+		ctx.verify_mode = ssl.CERT_NONE
+	except:
+		ctx = None
 	for url in (url1, url2, url3):
 		print 'fetching ', url, ' ...',
 		sys.stdout.flush();
 		success = True
 		try:
-			content = urllib2.urlopen(url).read()
+			content = urllib2.urlopen(url, context = ctx).read()
 		except urllib2.URLError, e:
 			success = False
 			print 'failed '
