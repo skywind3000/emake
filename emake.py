@@ -271,12 +271,89 @@ class preprocessor(object):
 		return head, lost, text
 	
 
+#----------------------------------------------------------------------
+# execute and capture
+#----------------------------------------------------------------------
+def execute(args, shell = False, capture = False):
+	import sys, os
+	parameters = []
+	if type(args) in (type(''), type(u'')):
+		import shlex
+		cmd = args
+		if sys.platform[:3] == 'win':
+			ucs = False
+			if type(cmd) == type(u''):
+				cmd = cmd.encode('utf-8')
+				ucs = True
+			args = shlex.split(cmd.replace('\\', '\x00'))
+			args = [ n.replace('\x00', '\\') for n in args ]
+			if ucs:
+				args = [ n.decode('utf-8') for n in args ]
+		else:
+			args = shlex.split(cmd)
+	for n in args:
+		if sys.platform[:3] != 'win':
+			text = ''
+			for ch in n:
+				if ch == ' ': text += '\\ '
+				elif ch == '\\': text += '\\\\'
+				elif ch == '\"': text += '\\\"'
+				elif ch == '\t': text += '\\t'
+				elif ch == '\n': text += '\\n'
+				elif ch == '\r': text += '\\r'
+				else:
+					text += ch
+			parameters.append(text)
+		else:
+			translate = False
+			if ' ' in n: translate = True
+			if '\t' in n: translate = True
+			if '"' in n: translate = True
+			if translate:
+				parameters.append('"%s"'%(n.replace('"', ' ')))
+			else:
+				parameters.append(n)
+	cmd = ' '.join(parameters)
+	if sys.platform[:3] == 'win' and len(cmd) > 255:
+		shell = False
+	if shell and (not capture):
+		os.system(cmd)
+		return ''
+	elif (not shell) and (not capture):
+		import subprocess
+		if 'call' in subprocess.__dict__:
+			subprocess.call(args)
+			return ''
+	import subprocess
+	if 'Popen' in subprocess.__dict__:
+		if sys.platform[:3] != 'win' and shell:
+			p = None
+			stdin, stdouterr = os.popen4(cmd)
+		else:
+			p = subprocess.Popen(args, shell = shell,
+					stdin = subprocess.PIPE, stdout = subprocess.PIPE, 
+					stderr = subprocess.STDOUT)
+			stdin, stdouterr = (p.stdin, p.stdout)
+	else:
+		p = None
+		stdin, stdouterr = os.popen4(cmd)
+	text = stdouterr.read()
+	stdin.close()
+	stdouterr.close()
+	if p: p.wait()
+	if not capture:
+		sys.stdout.write(text)
+		sys.stdout.flush()
+		return ''
+	return text
+
 
 #----------------------------------------------------------------------
 # Default CFG File
 #----------------------------------------------------------------------
 ININAME = ''
 INIPATH = ''
+
 
 #----------------------------------------------------------------------
 # configure: 确定gcc位置并从配置读出默认设置
@@ -576,6 +653,7 @@ class configure(object):
 			self.fpic = False
 		else:
 			self.fpic = True
+		#self.__search_python_dev()
 		self.inited = True
 		return 0
 
@@ -738,6 +816,22 @@ class configure(object):
 		fp.close()
 		return 0
 	
+	# 搜索 Python开发路径
+	def __search_python_dev (self):
+		self.pythoninc = []
+		self.pythonlib = []
+		import distutils.sysconfig
+		sysconfig = distutils.sysconfig
+		inc1 = sysconfig.get_python_inc()
+		inc2 = sysconfig.get_python_inc(plat_specific = True)
+		pyver = sysconfig.get_config_var('VERSION')
+		getvar = sysconfig.get_config_var
+		lib = 'python' + str(pyver)
+		print inc1
+		print getvar('LIBPL')
+		print getvar('LINKFORSHARED')
+		return 0
+	
 	# 配置路径
 	def pathconf (self, path):
 		path = path.strip(' \t')
@@ -875,46 +969,9 @@ class configure(object):
 			else: text = '> ' + cmd + '\n'
 		sys.stdout.flush()
 		sys.stderr.flush()
-		if 0:
-			os.system(cmd)
-			return ''
-		routine = False
-		try:
-			import subprocess
-			if 'Popen' in subprocess.__dict__:
-				routine = True
-		except:
-			routine = False
-		if routine:
-			import shlex
-			if not self.unix:
-				ucs = False
-				if type(cmd) == type(u''):
-					cmd = cmd.encode('utf-8')
-					ucs = True
-				args = shlex.split(cmd.replace('\\', '\x00'))
-				args = [ n.replace('\x00', '\\') for n in args ]
-				if ucs:
-					args = [ n.decode('utf-8') for n in args ]
-			else:
-				args = shlex.split(cmd)
-			p = subprocess.Popen(args, shell = False,
-				stdin = subprocess.PIPE, stdout = subprocess.PIPE, 
-				stderr = subprocess.STDOUT)
-			stdin, stdouterr = (p.stdin, p.stdout)
-		else:
-			p = None
-			stdin, stdouterr = os.popen4(cmd)
-		text += stdouterr.read()
-		stdin.close()
-		stdouterr.close()
-		if p: p.wait()
-		if not capture:
-			sys.stdout.write(text)
-			sys.stdout.flush()
-			return ''
+		text = text + execute(cmd, shell = False, capture = capture)
 		return text
-
+	
 	# 调用 gcc
 	def gcc (self, parameters, needlink, printcmd = False, capture = False):
 		param = self.param_build
@@ -2474,40 +2531,10 @@ def update():
 	return 0
 
 def help():
-	print "Emake v3.32 Jan.20 2015"
+	print "Emake v3.36 Feb.16 2015"
 	print "By providing a completely new way to build your projects, Emake"
 	print "is a easy tool which controls the generation of executables and other"
 	print "non-source files of a program from the program's source files. "
-	return 0
-
-
-#----------------------------------------------------------------------
-# execute program
-#----------------------------------------------------------------------
-def execute(filename):
-	path = os.path.abspath(filename)
-	base = os.path.split(path)[0]
-	name = os.path.split(path)[1]
-	save = os.getcwd()
-	os.chdir(base)
-	part = os.path.splitext(name)
-	extname = part[-1].lower()
-	if sys.platform[:3] == 'win':
-		os.system('"%s"'%part[0])
-	else:
-		cext = ('.c', '.cpp', '.cxx', '.cc', '.m', '.mm')
-		dext = ('.asm', '.s', '.bas', '.pas')
-		if (extname in  cext) or (extname in dext):
-			os.system('"%s"'%os.path.join(base, part[0]))
-		elif extname in ('.py', '.pyw', '.pyc', '.pyo'):
-			os.system('python "%s"'%name)
-		elif extname in ('.sh',):
-			os.system('bash "%s"'%name)
-		elif extname in ('.pl',):
-			os.system('perl "%s"'%name)
-		else:
-			os.system('"%s"'%path)
-	os.chdir(save)
 	return 0
 
 
@@ -2562,7 +2589,7 @@ def main(argv = None):
 			break
 
 	if len(argv) == 1:
-		version = '(emake v3.32 Jan.20 2015 %s)'%sys.platform
+		version = '(emake v3.36 Feb.16 2015 %s)'%sys.platform
 		print 'usage: "emake.py [option] srcfile" %s'%version
 		print 'options  :  -b | -build      build project'
 		print '            -c | -compile    compile project'
