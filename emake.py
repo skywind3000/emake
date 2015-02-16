@@ -581,6 +581,7 @@ class configure(object):
 		if not self.haveini:
 			#sys.stderr.write('warning: %s cannot be open\n'%(self.ininame))
 			sys.stderr.flush()
+		defined = self.exename.get('gcc', None) and True or False
 		for name in ('gcc', 'ar', 'ld', 'dllwrap'):
 			exename = self.exename.get(name, name)
 			if not self.unix:
@@ -597,6 +598,10 @@ class configure(object):
 				self.dirhome = ''
 		if (not self.dirhome) and (not cfghome):
 			self.dirhome = self.__search_gcc()
+			if (not self.dirhome) and (not defined):
+				gcc = 'clang'
+				self.exename['gcc'] = gcc
+				self.dirhome = self.__search_gcc()
 		if self.dirhome:
 			self.dirhome = os.path.abspath(self.dirhome)
 		try: 
@@ -653,7 +658,7 @@ class configure(object):
 			self.fpic = False
 		else:
 			self.fpic = True
-		#self.__search_python_dev()
+		#self.__python_config()
 		self.inited = True
 		return 0
 
@@ -814,22 +819,6 @@ class configure(object):
 		fp = open(self.inipath, 'w')
 		fp.write(text)
 		fp.close()
-		return 0
-	
-	# 搜索 Python开发路径
-	def __search_python_dev (self):
-		self.pythoninc = []
-		self.pythonlib = []
-		import distutils.sysconfig
-		sysconfig = distutils.sysconfig
-		inc1 = sysconfig.get_python_inc()
-		inc2 = sysconfig.get_python_inc(plat_specific = True)
-		pyver = sysconfig.get_config_var('VERSION')
-		getvar = sysconfig.get_config_var
-		lib = 'python' + str(pyver)
-		print inc1
-		print getvar('LIBPL')
-		print getvar('LINKFORSHARED')
 		return 0
 	
 	# 配置路径
@@ -1110,6 +1099,113 @@ class configure(object):
 			print '-' * 72
 		os.environ['EMAKECYGWIN'] = '1'
 		return self.cygwin_bash(cmds, capture)
+
+	# 读取连接基准地址
+	def readlink (self, fn):
+		if not self.unix:
+			return fn
+		while True:
+			try:
+				f2 = os.readlink(fn)
+				fn = f2
+			except:
+				break
+		return fn
+
+	# 搜索 Python开发路径
+	def python_config (self):
+		cflags = self._getitem('default', 'python_cflags', None)
+		ldflags = self._getitem('default', 'python_ldflags', None)
+		if cflags or ldflags:
+			return (cflags.strip('\r\n\t '), ldflags.strip('\r\n\t '))
+		pythoninc, pythonlib = [], []
+		import distutils.sysconfig
+		sysconfig = distutils.sysconfig
+		inc1 = sysconfig.get_python_inc()
+		inc2 = sysconfig.get_python_inc(plat_specific = True)
+		pythoninc.append('-I' + self.pathtext(inc1))
+		if inc2 != inc1:
+			pythoninc.append('-I' + self.pathtext(inc2))
+		pyver = sysconfig.get_config_var('VERSION')
+		getvar = sysconfig.get_config_var
+		if not pyver:
+			v1, v2 = sys.version_info[:2]
+			pyver = self.unix and '%s.%s'%(v1, v2) or '%s%s'%(v1, v2)
+		lib1 = getvar('LIBS')
+		pythonlib.extend(lib1 and lib1.split() or [])
+		prefix = sys.prefix
+		if os.path.exists(prefix):
+			if not pythoninc:
+				n1 = os.path.join(prefix, 'include/python%s'%pyver)
+				n2 = os.path.join(prefix, 'include')
+				if os.path.exists(n1 + '/Python.h'):
+					pythoninc.append('-I' + self.pathtext(n1))
+				elif os.path.exists(n2 + '/Python.h'):
+					pythoninc.append('-I' + self.pathtext(n2))
+			if not pythonlib:
+				n1 = os.path.join(prefix, 'lib/python%s'%pyver)
+				n2 = os.path.join(n1, 'config')
+				n3 = os.path.join(prefix, 'libs')
+				fn1 = 'libpython' + pyver + '.a'
+				fn2 = 'libpython' + pyver + '.dll.a'
+				done = False
+				for ff in (fn1, fn2):
+					for nn in (n1, n2, n3):
+						if os.path.exists(nn + '/' + ff):
+							pythonlib.append('-L' + self.pathtext(nn))
+							done = True
+							break
+					if done:
+						break
+		lib2 = getvar('SYSLIBS')
+		pythonlib.extend(lib2 and lib2.split() or [])
+		if not getvar('Py_ENABLE_SHARED'):
+			if getvar('LIBPL'):
+				pythonlib.insert(0, getvar('LIBPL'))
+		if not getvar('PYTHONFRAMEWORK'):
+			if getvar('LINKFORSHARED'):
+				pythonlib.extend(getvar('LINKFORSHARED').split())
+		pythonlib.append('-lpython' + pyver)
+		cflags = ' '.join(pythoninc)
+		ldflags = ' '.join(pythonlib)
+		return cflags, ldflags
+
+	# 取得 java配置
+	def java_config (self):
+		cflags = self._getitem('default', 'java_cflags', None)
+		if cflags:
+			return cflags.strip('\r\n\t ')
+		jdk = os.environ.get('JAVA_HOME', None)
+		if jdk:
+			inc = os.path.join(jdk.strip('\r\n\t '), 'include')
+			if os.path.exists(os.path.join(inc, 'jni.h')):
+				return '-I' + self.pathtext(inc)
+		spliter = self.unix and ':' or ';'
+		PATH = os.environ.get('PATH', '')
+		for path in PATH.split(spliter):
+			path = path.strip('\r\n\t ')
+			if not os.path.exists(path):
+				continue
+			fn = os.path.join(path, 'javac')
+			if not self.unix: fn += '.exe'
+			if not os.path.exists(fn):
+				continue
+			fn = self.readlink(fn)
+			if not os.path.exists(fn):
+				continue
+			pp = os.path.abspath(os.path.join(os.path.dirname(fn), '..'))
+			pp = os.path.join(pp, 'include')
+			if not os.path.exists(pp):
+				continue
+			jni = os.path.join(pp, 'jni.h')
+			if os.path.exists(jni):
+				cflags = [ '-I' + self.pathtext(pp) ]
+				tt = os.path.join(pp, 'win32')
+				if os.path.exists(tt) and (not self.unix):
+					cflags.append('-I' + self.pathtext(tt))
+				return ' '.join(cflags)
+		return ''
+
 
 
 #----------------------------------------------------------------------
@@ -2001,6 +2097,24 @@ class iparser (object):
 				name = name.strip('\r\n\t ')
 				k, v = (name.split('=') + ['',''])[:2]
 				self.push_environ(k.strip('\r\n\t '), v.strip('\r\n\t '))
+			return 0
+		if command == 'use':
+			for name in body.replace(';', ',').split(','):
+				name = name.strip('\r\n\t ')
+				if name == 'python':
+					cflags, ldflags = self.config.python_config()
+					if cflags:
+						self.push_flag(cflags)
+					if ldflags:
+						self.push_flnk(ldflags)
+				elif name == 'java':
+					java = self.config.java_config()
+					if java:
+						self.push_flag(java)
+				else:
+					tt = 'error: %s: invalid name to use, only python or java'
+					self.error(tt%command, fname, lineno)
+					return -1
 			return 0
 		self.error('error: %s: invalid command'%command, fname, lineno)
 		return -1
