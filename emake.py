@@ -1219,7 +1219,7 @@ class configure(object):
 			if os.path.exists(jni):
 				return self.__java_final(pp)
 		if self.unix:
-			for i in xrange(20, 7, -1):
+			for i in xrange(20, 4, -1):
 				n = '/usr/local/openjdk%d/include'%i
 				if os.path.exists(os.path.join(n, 'jni.h')):
 					return self.__java_final(n)
