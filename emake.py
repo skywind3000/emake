@@ -1169,6 +1169,24 @@ class configure(object):
 		cflags = ' '.join(pythoninc)
 		ldflags = ' '.join(pythonlib)
 		return cflags, ldflags
+	
+	# 最终完成 java配置
+	def __java_final (self, home):
+		path = [ home ]
+		subdir = []
+		try:
+			for sub in os.listdir(home):
+				newpath = os.path.join(home, sub)
+				if os.path.isdir(newpath):
+					import difflib
+					m = difflib.SequenceMatcher(None, sys.platform, sub)
+					subdir.append((m.ratio(), sub))
+		except:
+			pass
+		subdir.sort()
+		if subdir:
+			path.append(os.path.join(home, subdir[-1][1]))
+		return ' '.join([ '-I%s'%self.pathtext(n) for n in path ])
 
 	# 取得 java配置
 	def java_config (self):
@@ -1179,7 +1197,7 @@ class configure(object):
 		if jdk:
 			inc = os.path.join(jdk.strip('\r\n\t '), 'include')
 			if os.path.exists(os.path.join(inc, 'jni.h')):
-				return '-I' + self.pathtext(inc)
+				return self.__java_final(inc)
 		spliter = self.unix and ':' or ';'
 		PATH = os.environ.get('PATH', '')
 		for path in PATH.split(spliter):
@@ -1199,11 +1217,15 @@ class configure(object):
 				continue
 			jni = os.path.join(pp, 'jni.h')
 			if os.path.exists(jni):
-				cflags = [ '-I' + self.pathtext(pp) ]
-				tt = os.path.join(pp, 'win32')
-				if os.path.exists(tt) and (not self.unix):
-					cflags.append('-I' + self.pathtext(tt))
-				return ' '.join(cflags)
+				return self.__java_final(pp)
+		if self.unix:
+			for i in xrange(20, 7, -1):
+				n = '/usr/local/openjdk%d/include'%i
+				if os.path.exists(os.path.join(n, 'jni.h')):
+					return self.__java_final(n)
+				n = '/usr/jdk/instances/jdk1.%d.0/include'%i
+				if os.path.exists(os.path.join(n, 'jni.h')):
+					return self.__java_final(n)
 		return ''
 
 
