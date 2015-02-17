@@ -1666,7 +1666,6 @@ class iparser (object):
 		self.info = 3
 		self.out = ''
 		self.int = ''
-		self.mainfile = ''
 		self.makefile = ''
 		self.incdict = {}
 		self.libdict = {}
@@ -1677,7 +1676,6 @@ class iparser (object):
 		self.linkdict = {}
 		self.flagdict = {}
 		self.flnkdict = {}
-		self.mainfile = ''
 		self.makefile = ''
 	
 	# 取得文件的目标文件名称
@@ -1779,41 +1777,35 @@ class iparser (object):
 		self.events[name].append(value)
 	
 	# 分析开始
-	def parse (self, mainfile):
+	def parse (self, makefile):
 		self.reset()
 		self.config.init()
-		mainfile = os.path.abspath(mainfile)
-		makefile = os.path.splitext(mainfile)[0] + '.mak'
-		part = os.path.split(mainfile)
+		makefile = os.path.abspath(makefile)
+		self.makefile = makefile
+		part = os.path.split(makefile)
 		self.home = part[0]
 		self.name = os.path.splitext(part[1])[0]
-		if not (os.path.exists(makefile) or os.path.exists(mainfile)):
-			sys.stderr.write('error: %s cannot be open\n'%(mainfile))
+		if not os.path.exists(makefile):
+			sys.stderr.write('error: %s cannot be open\n'%(makefile))
 			sys.stderr.flush()
 			return -1
-		extname = os.path.splitext(mainfile)[1].lower()
-		mainsave = mainfile
-		if extname == '.mak':
-			mainfile = ''
 		cfg = self.config.config.get('default', {})
 		for name in ('prebuild', 'prelink', 'postbuild'):
 			body = cfg.get(name, '').strip('\r\n\t ').split('&&')
 			for script in body:
 				script = script.strip('\r\n\t ')
 				self.push_event(name, script)
-		if os.path.exists(makefile) and makefile:
-			self.makefile = makefile
+		extname = os.path.splitext(makefile)[1].lower()
+		if extname in ('.mak', '.em', '.emk', '.pyx', '.py'):
 			if self.scan_makefile() != 0:
-				return -2
-		ext2 = ('.mak', '.emake', '.proj', '.prj')
-		if (not extname in self.extnames) and (not extname in ext2):
-			sys.stderr.write('error: unknow file type of "%s"\n'%mainsave)
-			sys.stderr.flush()
-			return -3
-		if os.path.exists(mainfile) and mainfile:
-			self.mainfile = mainfile
+				return -3
+		elif extname in self.extnames:
 			if self.scan_mainfile() != 0:
 				return -4
+		else:
+			sys.stderr.write('error: unknow file type of "%s"\n'%makefile)
+			sys.stderr.flush()
+			return -5
 		if not self.out:
 			self.out = os.path.splitext(makefile)[0]
 		self.out = self.coremake.outname(self.out, self.mode)
@@ -1888,25 +1880,31 @@ class iparser (object):
 	
 	# 扫描主文件
 	def scan_mainfile (self):
-		command = self._scan_memo(self.mainfile)
+		command = self._scan_memo(self.makefile)
 		savedir = os.getcwd()
-		os.chdir(os.path.split(self.mainfile)[0])
+		os.chdir(os.path.split(self.makefile)[0])
 		retval = 0
 		for lineno, text in command:
-			if self._process(self.mainfile, lineno, text) != 0:
+			if self._process(self.makefile, lineno, text) != 0:
 				retval = -1
 				break
 		os.chdir(savedir)
-		self.push_src(self.mainfile)
+		self.push_src(self.makefile)
 		return retval
 
 	# 扫描工程文件
 	def scan_makefile (self):
 		savedir = os.getcwd()
 		os.chdir(os.path.split(self.makefile)[0])
+		ext = os.path.splitext(self.makefile)[1].lower()
 		lineno = 1
 		retval = 0
 		for text in open(self.makefile, 'U'):
+			if ext in ('.pyx', '.py'):
+				text = text.strip('\r\n\t ')
+				if text[:3] != '##!':
+					continue
+				text = text[3:]
 			if self._process(self.makefile, lineno, text) != 0:
 				retval = -1
 				break
@@ -2355,7 +2353,7 @@ class emake (object):
 		self.dependence.reset()
 		self.loaded = 0
 	
-	def open (self, mainfile):
+	def open (self, makefile):
 		self.reset()
 		self.config.init()
 		environ = {}
@@ -2363,11 +2361,11 @@ class emake (object):
 		if 'environ' in cfg:
 			for k, v in cfg['environ'].items():
 				environ[k.upper()] = v
-		retval = self.parser.parse(mainfile)
+		retval = self.parser.parse(makefile)
 		if retval != 0:
 			return -1
 		parser = self.parser
-		self.coremake.init(mainfile, parser.out, parser.mode, parser.int)
+		self.coremake.init(makefile, parser.out, parser.mode, parser.int)
 		#print 'open', parser.out, parser.mode, parser.int
 		for src in self.parser:
 			obj = self.parser[src]
@@ -2802,7 +2800,7 @@ def main(argv = None):
 	ext = os.path.splitext(name)[-1].lower() 
 	ft1 = ('.c', '.cpp', '.cxx', '.cc', '.m', '.mm')
 	ft2 = ('.h', '.hpp', '.hxx', '.hh', '.inc')
-	ft3 = ('.mak', '.proj', '.prj')
+	ft3 = ('.mak', '.em', '.emk', '.py', '.pyx')
 
 	if cmd in ('-d', '-d', '--d', '-cmdline', '--cmdline', '-m', '--m'):
 		config = configure()
