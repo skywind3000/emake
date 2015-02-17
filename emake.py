@@ -1161,7 +1161,7 @@ class configure(object):
 		pythonlib.extend(lib2 and lib2.split() or [])
 		if not getvar('Py_ENABLE_SHARED'):
 			if getvar('LIBPL'):
-				pythonlib.insert(0, getvar('LIBPL'))
+				pythonlib.insert(0, '-L' + getvar('LIBPL'))
 		if not getvar('PYTHONFRAMEWORK'):
 			if getvar('LINKFORSHARED'):
 				pythonlib.extend(getvar('LINKFORSHARED').split())
