@@ -394,6 +394,7 @@ class configure(object):
 		self.name = {}
 		ext = ('.c', '.cpp', '.c', '.cc', '.cxx', '.s', '.asm', '.m', '.mm')
 		self.extnames = ext
+		self.__jdk_home = None
 		self.reset()
 	
 	# 配置信息复位
@@ -544,6 +545,14 @@ class configure(object):
 				text = ','.join(data)
 				config['default'][bp] = text
 				self.config['default'][bp] = text
+			java = config['default'].get('java', '')
+			if java:
+				java = os.path.join(inihome, java)
+				if not os.path.exists(java):
+					sys.stderr.write('error: %s: %s not exists\n'%(inipath, java))
+					sys.stderr.flush()
+				else:
+					self.config['default']['java'] = os.path.abspath(java)
 			self.haveini = True
 		return 0
 
@@ -1189,15 +1198,17 @@ class configure(object):
 		return ' '.join([ '-I%s'%self.pathtext(n) for n in path ])
 
 	# 取得 java配置
-	def java_config (self):
-		cflags = self._getitem('default', 'java_cflags', None)
-		if cflags:
-			return cflags.strip('\r\n\t ')
+	def java_home (self):
+		jdk = self._getitem('default', 'java', None)
+		if jdk:
+			jdk = os.path.abspath(jdk)
+			if os.path.exists(os.path.join(jdk, 'include/jni.h')):
+				return jdk
 		jdk = os.environ.get('JAVA_HOME', None)
 		if jdk:
-			inc = os.path.join(jdk.strip('\r\n\t '), 'include')
-			if os.path.exists(os.path.join(inc, 'jni.h')):
-				return self.__java_final(inc)
+			jdk = os.path.abspath(jdk)
+			if os.path.exists(jdk):
+				return jdk
 		spliter = self.unix and ':' or ';'
 		PATH = os.environ.get('PATH', '')
 		for path in PATH.split(spliter):
@@ -1217,18 +1228,55 @@ class configure(object):
 				continue
 			jni = os.path.join(pp, 'jni.h')
 			if os.path.exists(jni):
-				return self.__java_final(pp)
+				pp = os.path.join(pp, '../')
+				return os.path.abspath(pp)
 		if self.unix:
 			for i in xrange(20, 4, -1):
-				n = '/usr/local/openjdk%d/include'%i
-				if os.path.exists(os.path.join(n, 'jni.h')):
-					return self.__java_final(n)
-				n = '/usr/jdk/instances/jdk1.%d.0/include'%i
-				if os.path.exists(os.path.join(n, 'jni.h')):
-					return self.__java_final(n)
+				n = '/usr/local/openjdk%d'%i
+				if os.path.exists(os.path.join(n, 'include/jni.h')):
+					return os.path.abspath(n)
+				n = '/usr/jdk/instances/jdk1.%d.0'%i
+				if os.path.exists(os.path.join(n, 'include/jni.h')):
+					return os.path.abspath(n)
 		return ''
 
-
+	# 取得 java配置
+	def java_config (self):
+		cflags = self._getitem('default', 'java_cflags', None)
+		if cflags:
+			return cflags.strip('\r\n\t ')
+		jdk = self.java_home()
+		if not jdk:
+			return ''
+		return self.__java_final(os.path.join(jdk, 'include'))
+	
+	# 执行 java命令: cmd 为 java, javac, jar等
+	def java_call (self, cmd, args = [], capture = False):
+		if self.__jdk_home == None:
+			self.__jdk_home = self.java_home()
+		if not self.__jdk_home:
+			sys.stderr.write('can not find java in $JAVA_HOME or $PATH\n')
+			sys.stderr.flush()
+			sys.exit(1)
+			return None
+		if not self.unix:
+			ext = os.path.splitext(cmd)[-1].lower()
+			if not ext:
+				cmd += '.exe'
+		cc = os.path.join(self.__jdk_home, 'bin/%s'%cmd)
+		if not os.path.exists(cc):
+			sys.stderr.write('can not find %s in %s\n'%(cmd, self.__jdk_home))
+			sys.stderr.flush()
+			sys.exit(1)
+			return None
+		cmd = cc
+		if not self.unix:
+			cmd = self.pathshort(cmd)
+		cmds = [ cmd ]
+		for n in args: 
+			cmds.append(n)
+		return execute(cmds, False, capture)
+		
 
 #----------------------------------------------------------------------
 # coremake: 核心工程编译，提供 Compile/Link/Build
