@@ -405,6 +405,7 @@ class configure(object):
 		self.pdef = {}		# 预定义宏
 		self.link = {}		# 连接库
 		self.flnk = {}		# 连接参数
+		self.wlnk = {}		# 连接传递
 		self.param_build = ''
 		self.param_compile = ''
 		return 0
@@ -788,6 +789,12 @@ class configure(object):
 		if not flnk in self.flnk:
 			self.flnk[flnk] = len(self.flnk)
 		return 0
+	
+	# 添加链接传递
+	def push_wlnk (self, wlnk):
+		if not wlnk in self.wlnk:
+			self.wlnk[wlnk] = len(self.wlnk)
+		return 0
 
 	# 搜索gcc
 	def __search_gcc (self):
@@ -867,6 +874,10 @@ class configure(object):
 			flnk = flnk.strip(' \t\r\n')
 			if not flnk: continue
 			self.push_flnk(flnk)
+		for wlnk in config('wlnk').replace(';', ',').split(','):
+			wlnk = wlnk.strip(' \t\r\n')
+			if not wlnk: continue
+			self.push_wlnk(wlnk)
 		self.parameters()
 		return 0
 	
@@ -901,6 +912,9 @@ class configure(object):
 		self.param_build = self.param_compile + ' ' + text
 		for flnk in self.sequence(self.flnk):
 			self.param_build += ' %s'%flnk
+		wl = ','.join(self.sequence(self.wlnk))
+		if wl and self.wlnk:
+			self.param_build += ' -Wl,' + wl
 		return text
 
 	# gcc 的search-dirs
@@ -976,6 +990,7 @@ class configure(object):
 		if not needlink:
 			param = self.param_compile
 		parameters = '%s %s'%(parameters, param)
+		#printcmd = True
 		return self.execute(self.exename['gcc'], parameters, printcmd, capture)
 
 	# 编译
@@ -1705,6 +1720,7 @@ class iparser (object):
 		self.link = []
 		self.flag = []
 		self.flnk = []
+		self.wlnk = []
 		self.environ = {}
 		self.events = {}
 		self.mode = 'exe'
@@ -1724,6 +1740,7 @@ class iparser (object):
 		self.linkdict = {}
 		self.flagdict = {}
 		self.flnkdict = {}
+		self.wlnkdict = {}
 		self.makefile = ''
 	
 	# 取得文件的目标文件名称
@@ -1798,6 +1815,13 @@ class iparser (object):
 			return -1
 		self.flnkdict[flnk] = len(self.flnk)
 		self.flnk.append(flnk)
+
+	# 添加连接传递
+	def push_wlnk (self, wlnk):
+		if wlnk in self.wlnkdict:
+			return -1
+		self.wlnkdict[wlnk] = len(self.wlnk)
+		self.wlnk.append(wlnk)
 	
 	# 添加导入配置
 	def push_imp (self, name, fname = '', lineno = -1):
@@ -2072,12 +2096,19 @@ class iparser (object):
 						fname, lineno)
 				self.push_flag(srcname)
 			return 0
-		if command in ('flnk', 'linkflag', 'ld', 'flaglink', 'flink'):
+		if command in ('flnk', 'linkflag', 'flink'):
 			for name in body.replace(';', ',').split(','):
 				srcname = self.pathconf(name)
 				if not srcname:
 					continue
 				self.push_flnk(srcname)
+			return 0
+		if command in ('wlnk', 'wl', 'ld', 'wlink'):
+			for name in body.replace(';', ',').split(','):
+				srcname = self.pathconf(name)
+				if not srcname:
+					continue
+				self.push_wlnk(srcname)
 			return 0
 		if command in ('arglink', 'al'):
 			self.push_flnk(body.strip('\r\n\t '))
@@ -2454,6 +2485,8 @@ class emake (object):
 		for flnk in self.parser.flnk:
 			self.config.push_flnk(flnk)
 			#print 'flnk', flnk
+		for wlnk in self.parser.wlnk:
+			self.config.push_wlnk(wlnk)
 		if self.parser.mode == 'dll' and self.config.unix:
 			if self.config.fpic:
 				self.config.push_flag('-fPIC')
@@ -2666,8 +2699,8 @@ def __update_file(name, content):
 
 def getemake():
 	import urllib2
-	url1 = 'http://easymake.googlecode.com/svn/trunk/emake.py'
-	url2 = 'http://www.joynb.net/php/getemake.php'
+	url1 = 'http://skywind3000.github.io/emake/emake.py'
+	url2 = 'http://www.skywind.me/php/getemake.php'
 	success = True
 	content = ''
 	for url in (url1, url2):
@@ -2713,7 +2746,7 @@ def update():
 	return 0
 
 def help():
-	print "Emake v3.36 Feb.16 2015"
+	print "Emake v3.37 Feb.16 2015"
 	print "By providing a completely new way to build your projects, Emake"
 	print "is a easy tool which controls the generation of executables and other"
 	print "non-source files of a program from the program's source files. "
@@ -2771,7 +2804,7 @@ def main(argv = None):
 			break
 
 	if len(argv) == 1:
-		version = '(emake v3.36 Feb.16 2015 %s)'%sys.platform
+		version = '(emake v3.37 Jul.06 2015 %s)'%sys.platform
 		print 'usage: "emake.py [option] srcfile" %s'%version
 		print 'options  :  -b | -build      build project'
 		print '            -c | -compile    compile project'
@@ -2783,7 +2816,7 @@ def main(argv = None):
 		print '            -g | -cygwin     cygwin execute'
 		print '            -s | -cshell     cygwin shell'
 		print '            -i | -install    install emake on unix'
-		print '            -u | -update     update itself from google code'
+		print '            -u | -update     update itself from github'
 		print '            -h | -help       show help page'
 		return 0
 	
