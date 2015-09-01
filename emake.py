@@ -2763,7 +2763,7 @@ def update():
 	return 0
 
 def help():
-	print "Emake v3.37 Feb.16 2015"
+	print "Emake v3.38 Sep.01 2015"
 	print "By providing a completely new way to build your projects, Emake"
 	print "is a easy tool which controls the generation of executables and other"
 	print "non-source files of a program from the program's source files. "
@@ -2821,7 +2821,7 @@ def main(argv = None):
 			break
 
 	if len(argv) == 1:
-		version = '(emake v3.37 Jul.06 2015 %s)'%sys.platform
+		version = '(emake v3.38 Sep.01 2015 %s)'%sys.platform
 		print 'usage: "emake.py [option] srcfile" %s'%version
 		print 'options  :  -b | -build      build project'
 		print '            -c | -compile    compile project'
