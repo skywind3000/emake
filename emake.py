@@ -1006,10 +1006,6 @@ class configure(object):
 
 	# 编译
 	def compile (self, srcname, objname, printcmd = False, capture = False):
-		ext = os.path.splitext(srcname)[-1].lower()
-		if ext in ('.s', '.S'):
-			cmd = '%s -o %s'%(self.pathrel(srcname), self.pathrel(objname))
-			return self.execute(self.exename['as'], cmd, printcmd, capture)
 		cmd = '-c %s -o %s'%(self.pathrel(srcname), self.pathrel(objname))
 		return self.gcc(cmd, False, printcmd, capture)
 	
