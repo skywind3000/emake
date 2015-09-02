@@ -2481,7 +2481,7 @@ class emake (object):
 			obj = self.parser[src]
 			self.coremake.push(src, obj)
 		savedir = os.getcwd()
-		os.chdir(os.path.dirname(makefile))
+		os.chdir(os.path.dirname(os.path.abspath(makefile)))
 		hr = self._config()
 		os.chdir(savedir)
 		if hr != 0:
