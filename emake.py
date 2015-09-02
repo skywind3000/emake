@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #======================================================================
 #
-# emake.py - emake version 3.30
+# emake.py - emake version 3.39
 #
 # history of this file:
 # 2009.08.20   skywind   create this file
@@ -19,6 +19,7 @@
 # 2013.12.19   skywind   new $(target) config
 # 2014.02.09   skywind   new build-event and environ
 # 2014.04.15   skywind   new 'arglink' and 'argcc' config
+# 2015.09.03   skywind   new replace in config.parameters()
 #
 #======================================================================
 import sys, time, os
@@ -378,6 +379,7 @@ class configure(object):
 		self.searchdirs = None
 		self.environ = {}
 		self.exename = {}
+		self.replace = {}
 		self.cygwin = ''
 		for n in os.environ:
 			self.environ[n] = os.environ[n]
@@ -669,6 +671,12 @@ class configure(object):
 		else:
 			self.fpic = True
 		#self.__python_config()
+		self.replace = {}
+		self.replace['home'] = self.dirhome
+		self.replace['emake'] = self.dirpath
+		self.replace['inihome'] = os.path.dirname(self.inipath)
+		self.replace['inipath'] = self.inipath
+		self.replace['target'] = self.target
 		self.inited = True
 		return 0
 
@@ -772,12 +780,13 @@ class configure(object):
 	
 	# 添加链接库
 	def push_link (self, link):
-		if link[-2:].lower() == '.o':
+		if link[-2:].lower() in ('.o', '.a'):
 			link = self.pathtext(self.path(link))
 		else:
 			link = '-l%s'%link.replace(' ', '_')
 		if not link in self.link:
 			self.link[link] = len(self.link)
+		#print 'push: ' + link
 		return 0
 	
 	# 添加预定义
@@ -887,6 +896,15 @@ class configure(object):
 		x.sort()
 		y = [ n for (k, n) in x ]
 		return y
+	
+	# 替换字符串 
+	def __replace_key (self, text):
+		for key in self.replace:
+			value = self.replace[key]
+			check = '$(' + key + ')'
+			if check in text:
+				text = text.replace(check, value)
+		return text
 
 	# 返回序列化的参数	
 	def parameters (self):
@@ -896,7 +914,7 @@ class configure(object):
 		for lib in self.sequence(self.lib):
 			text += '-L%s '%lib
 		for flag in self.sequence(self.flag):
-			text += '%s '%flag
+			text += '%s '%self.__replace_key(flag)
 		for pdef in self.sequence(self.pdef):
 			text += '-D%s '%pdef
 		self.param_compile = text.strip(' ')
@@ -904,15 +922,15 @@ class configure(object):
 		if self.xlink:
 			text = '-Xlinker "-(" '
 		for link in self.sequence(self.link):
-			text += '%s '%link
+			text += '%s '%self.__replace_key(link)
 		if self.xlink:
 			text += ' -Xlinker "-)"'
 		else:
 			text = text + ' ' + text
 		self.param_build = self.param_compile + ' ' + text
 		for flnk in self.sequence(self.flnk):
-			self.param_build += ' %s'%flnk
-		wl = ','.join(self.sequence(self.wlnk))
+			self.param_build += ' %s'%self.__replace_key(flnk)
+		wl = ','.join([ self.__replace_key(n) for n in self.sequence(self.wlnk) ])
 		if wl and self.wlnk:
 			self.param_build += ' -Wl,' + wl
 		return text
@@ -2462,7 +2480,11 @@ class emake (object):
 		for src in self.parser:
 			obj = self.parser[src]
 			self.coremake.push(src, obj)
-		if self._config() != 0:
+		savedir = os.getcwd()
+		os.chdir(os.path.dirname(makefile))
+		hr = self._config()
+		os.chdir(savedir)
+		if hr != 0:
 			return -2
 		self.coremake._environ = {}
 		for k, v in environ.items():
@@ -2474,6 +2496,8 @@ class emake (object):
 		return 0
 	
 	def _config (self):
+		self.config.replace['makefile'] = self.coremake._main
+		self.config.replace['workspace'] = os.path.dirname(self.coremake._main)
 		for name, fname, lineno in self.parser.imp:
 			if not name in self.config.config:
 				self.parser.error('error: %s: No such config section'%name, \
@@ -2506,6 +2530,7 @@ class emake (object):
 		for name, fname, lineno in self.parser.exp:
 			self.coremake.dllwrap(name)
 		self.config.parameters()
+		#print 'replace', self.config.replace
 		return 0
 	
 	def compile (self, printmode = -1):
@@ -2759,7 +2784,7 @@ def update():
 	return 0
 
 def help():
-	print "Emake v3.38 Sep.01 2015"
+	print "Emake v3.39 Sep.03 2015"
 	print "By providing a completely new way to build your projects, Emake"
 	print "is a easy tool which controls the generation of executables and other"
 	print "non-source files of a program from the program's source files. "
@@ -2817,7 +2842,7 @@ def main(argv = None):
 			break
 
 	if len(argv) == 1:
-		version = '(emake v3.38 Sep.01 2015 %s)'%sys.platform
+		version = '(emake v3.39 Sep.03 2015 %s)'%sys.platform
 		print 'usage: "emake.py [option] srcfile" %s'%version
 		print 'options  :  -b | -build      build project'
 		print '            -c | -compile    compile project'
