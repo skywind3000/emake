@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #======================================================================
 #
-# emake.py - emake version 3.39
+# emake.py - emake version 3.60
 #
 # history of this file:
 # 2009.08.20   skywind   create this file
@@ -294,23 +294,12 @@ def execute(args, shell = False, capture = False):
 			args = shlex.split(cmd)
 	for n in args:
 		if sys.platform[:3] != 'win':
-			text = ''
-			for ch in n:
-				if ch == ' ': text += '\\ '
-				elif ch == '\\': text += '\\\\'
-				elif ch == '\"': text += '\\\"'
-				elif ch == '\t': text += '\\t'
-				elif ch == '\n': text += '\\n'
-				elif ch == '\r': text += '\\r'
-				else:
-					text += ch
+			replace = { ' ':'\\ ', '\\':'\\\\', '\"':'\\\"', '\t':'\\t', \
+				'\n':'\\n', '\r':'\\r' }
+			text = ''.join([ replace.get(ch, ch) for ch in n ])
 			parameters.append(text)
 		else:
-			translate = False
-			if ' ' in n: translate = True
-			if '\t' in n: translate = True
-			if '"' in n: translate = True
-			if translate:
+			if (' ' in n) or ('\t' in n) or ('"' in n): 
 				parameters.append('"%s"'%(n.replace('"', ' ')))
 			else:
 				parameters.append(n)
@@ -2784,7 +2773,7 @@ def update():
 	return 0
 
 def help():
-	print "Emake v3.39 Sep.03 2015"
+	print "Emake v3.60 Sep.25 2015"
 	print "By providing a completely new way to build your projects, Emake"
 	print "is a easy tool which controls the generation of executables and other"
 	print "non-source files of a program from the program's source files. "
@@ -2842,7 +2831,7 @@ def main(argv = None):
 			break
 
 	if len(argv) == 1:
-		version = '(emake v3.39 Sep.03 2015 %s)'%sys.platform
+		version = '(emake v3.60 Sep.25 2015 %s)'%sys.platform
 		print 'usage: "emake.py [option] srcfile" %s'%version
 		print 'options  :  -b | -build      build project'
 		print '            -c | -compile    compile project'
