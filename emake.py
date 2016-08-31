@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #======================================================================
 #
-# emake.py - emake version 3.60
+# emake.py - emake version 3.6.2
 #
 # history of this file:
 # 2009.08.20   skywind   create this file
@@ -20,6 +20,9 @@
 # 2014.02.09   skywind   new build-event and environ
 # 2014.04.15   skywind   new 'arglink' and 'argcc' config
 # 2015.09.03   skywind   new replace in config.parameters()
+# 2016.01.14   skywind   new compile flags with different source file
+# 2016.04.27   skywind   exit non-zero when error occurs
+# 2016.09.01   skywind   new lib composite method
 #
 #======================================================================
 import sys, time, os
@@ -574,8 +577,7 @@ class configure(object):
 			if self.unix:
 				self._readini('/etc/%s'%self.ininame)
 				self._readini('/usr/local/etc/%s'%self.ininame)
-				self._readini('~/%s'%self.ininame)
-				self._readini('~/.%s'%os.path.splitext(self.ininame)[0])
+				self._readini('~/.config/%s'%self.ininame)
 			self._readini(self.inipath)
 		self.dirhome = self._getitem('default', 'home', '')
 		cfghome = self.dirhome
@@ -708,8 +710,8 @@ class configure(object):
 			return name
 		current = os.getcwd().replace('\\', '/')
 		if len(current) > 0:
-				if current[-1] != '/':
-						current += '/'
+			if current[-1] != '/':
+				current += '/'
 		name = self.path(name).replace('\\', '/')
 		size = len(current)
 		if name[:size] == current:
@@ -1012,8 +1014,8 @@ class configure(object):
 		return self.execute(self.exename['gcc'], parameters, printcmd, capture)
 
 	# 编译
-	def compile (self, srcname, objname, printcmd = False, capture = False):
-		cmd = '-c %s -o %s'%(self.pathrel(srcname), self.pathrel(objname))
+	def compile (self, srcname, objname, cflags, printcmd = False, capture = False):
+		cmd = '-c %s -o %s %s'%(self.pathrel(srcname), self.pathrel(objname), cflags)
 		return self.gcc(cmd, False, printcmd, capture)
 	
 	# 使用 dllwrap
@@ -1031,9 +1033,16 @@ class configure(object):
 	
 	# 生成lib库
 	def makelib (self, output, objs = [], printcmd = False, capture = False):
-		name = ' '.join([ self.pathrel(n) for n in objs ])
-		parameters = 'crv %s %s'%(self.pathrel(output), name)
-		return self.execute(self.exename['ar'], parameters, printcmd, capture)
+		if 0:
+			name = ' '.join([ self.pathrel(n) for n in objs ])
+			parameters = 'crv %s %s'%(self.pathrel(output), name)
+			return self.execute(self.exename['ar'], parameters, printcmd, capture)
+		objs = [ n for n in objs ]
+		for link in self.sequence(self.wlnk):
+			if link[-2:] in ('.a', '.o'):
+				if os.path.exists(link):
+					objs.append(link)
+		return self.composite(output, objs, printcmd, capture)
 	
 	# 生成动态链接：dll 或者 so
 	def makedll (self, output, objs = [], param = '', printcmd = False, capture = False):
@@ -1058,6 +1067,57 @@ class configure(object):
 			name = '-Xlinker "-(" ' + name + ' -Xlinker "-)"'
 		parameters = '-o %s %s %s'%(self.pathrel(output), param, name)
 		return self.gcc(parameters, True, printcmd, capture)
+
+	# 合并.o .a文件为新的 .a文件 
+	def composite (self, output, objs = [], printcmd = False, capture = False):
+		import os, tempfile, shutil
+		cwd = os.getcwd()
+		temp = tempfile.mkdtemp('.int', 'lib')
+		output = os.path.abspath(output)
+		libname = []
+		for name in [ os.path.abspath(n) for n in objs ]:
+			if not name in libname:
+				libname.append(name)
+		outpath = os.path.join(temp, 'out')
+		srcpath = os.path.join(temp, 'src')
+		os.mkdir(outpath)
+		os.mkdir(srcpath)
+		os.chdir(srcpath)
+		names = {}
+		for source in libname:
+			os.chdir(srcpath)
+			for fn in [ n for n in os.listdir('.') ]:
+				os.remove(fn)
+			files = []
+			filetype = os.path.splitext(source)[-1].lower()
+			if filetype == '.o':
+				files.append(source)
+			else:
+				args = '-x %s'%self.pathrel(source)
+				self.execute(self.exename['ar'], args, printcmd, capture)
+				for fn in os.listdir('.'):
+					files.append(os.path.abspath(fn))
+			for fn in files:
+				name = os.path.split(fn)[-1]
+				part = os.path.splitext(name)
+				last = None
+				for i in xrange(1000):
+					newname = (i > 0) and (part[0] + '_%d'%i + part[1]) or name
+					if not newname in names:
+						last = newname
+						break
+				if last and os.path.exists(fn):
+					names[last] = 1
+					shutil.copyfile(fn, os.path.join(outpath, last))
+		os.chdir(outpath)
+		args = ['crv', self.pathrel(output)]
+		args = ' '.join(args + [self.pathrel(n) for n in names])
+		try: os.remove(output)
+		except: pass
+		self.execute(self.exename['ar'], args, printcmd, capture)
+		os.chdir(cwd)
+		shutil.rmtree(temp)
+		return 0
 
 	# 运行工具
 	def cmdtool (self, sectname, exename, parameters, printcmd = False):
@@ -1337,6 +1397,7 @@ class coremake(object):
 		self._mode = 'exe'	# exe win dll lib
 		self._src = []		# 源代码
 		self._obj = []		# 目标文件
+		self._opt = []
 		self._export = {}	# DLL导出配置
 		self._environ = {}	# 环境变量
 		self.inited = 0
@@ -1417,9 +1478,10 @@ class coremake(object):
 		return src2obj
 	
 	# 添加源文件和目标文件
-	def push (self, srcname, objname):
+	def push (self, srcname, objname, options):
 		self._src.append(os.path.abspath(srcname))
 		self._obj.append(os.path.abspath(objname))
+		self._opt.append(options)
 	
 	# 创建目录
 	def mkdir (self, path):
@@ -1517,6 +1579,7 @@ class coremake(object):
 		for i in xrange(len(self._src)):
 			srcname = self._src[i]
 			objname = self._obj[i]
+			options = self._opt[i]
 			if srcname == objname:
 				continue
 			if skipexist and os.path.exists(objname):
@@ -1528,7 +1591,7 @@ class coremake(object):
 				if name[:1] == '"':
 					name = name[1:-1]
 				print name
-			self.config.compile(srcname, objname, printcmd)
+			self.config.compile(srcname, objname, options, printcmd)
 			if not os.path.exists(objname):
 				retval = -1
 				break
@@ -1537,7 +1600,7 @@ class coremake(object):
 	# 多核编译：skipexist(是否需要跳过已有的obj文件)
 	def _compile_threading (self, skipexist, printmode, printcmd, cpus):
 		# 估算编译时间，文件越大假设时间越长，放在最前面
-		ctasks = [ (os.path.getsize(s), s, o) for s, o in zip(self._src, self._obj) ]
+		ctasks = [ (os.path.getsize(s), s, o, t) for s, o, t in zip(self._src, self._obj, self._opt) ]
 		ctasks.sort()
 		import threading
 		self._task_lock = threading.Lock()
@@ -1575,7 +1638,7 @@ class coremake(object):
 			if not self._task_queue:
 				mutex.release()
 				break
-			weight, srcname, objname = self._task_queue.pop()
+			weight, srcname, objname, options = self._task_queue.pop()
 			mutex.release()
 			if srcname == objname:
 				continue
@@ -1584,7 +1647,7 @@ class coremake(object):
 			try: os.remove(os.path.abspath(objname))
 			except: pass
 			timeslap = time.time()
-			output = self.config.compile(srcname, objname, printcmd, True)
+			output = self.config.compile(srcname, objname, options, printcmd, True)
 			timeslap = time.time() - timeslap
 			result = True
 			if not os.path.exists(objname):
@@ -1636,7 +1699,7 @@ class coremake(object):
 			print 'linking ...'
 		output = self._out
 		if skipexist and os.path.exists(output):
-			return 0
+			return output
 		self.remove(output)
 		self.mkdir(os.path.split(output)[0])
 		if self._mode == 'exe':
@@ -1755,6 +1818,7 @@ class iparser (object):
 		self.libdict = {}
 		self.srcdict = {}
 		self.chkdict = {}
+		self.optdict = {}
 		self.impdict = {}
 		self.expdict = {}
 		self.linkdict = {}
@@ -1780,7 +1844,7 @@ class iparser (object):
 		return self.src.__iter__()
 	
 	# 添加代码
-	def push_src (self, filename):
+	def push_src (self, filename, options):
 		filename = os.path.abspath(filename)
 		realname = os.path.normcase(filename)
 		if filename in self.srcdict:	
@@ -1789,6 +1853,7 @@ class iparser (object):
 			return -1
 		self.srcdict[filename] = ''
 		self.chkdict[realname] = ''
+		self.optdict[filename] = options
 		self.src.append(filename)
 		return 0
 	
@@ -1981,7 +2046,7 @@ class iparser (object):
 				retval = -1
 				break
 		os.chdir(savedir)
-		self.push_src(self.makefile)
+		self.push_src(self.makefile, '')
 		return retval
 
 	# 扫描工程文件
@@ -2017,7 +2082,18 @@ class iparser (object):
 	def _process_src (self, textline, fname = '', lineno = -1):
 		ext1 = ('.c', '.cpp', '.cc', '.cxx', '.asm')
 		ext2 = ('.s', '.o', '.obj', '.m', '.mm')
-		for name in textline.replace(';', ',').split(','):
+		pos = textline.find(':')
+		body, options = textline, ''
+		pos = textline.find(':')
+		if pos >= 0:
+			split = (sys.platform[:3] != 'win') and True or False
+			if sys.platform[:3] == 'win':
+				if not textline[pos:pos + 2] in (':/', ':\\'):
+					split = True
+			if split:
+				body = textline[:pos].strip('\r\n\t ')
+				options = textline[pos + 1:].strip('\r\n\t ')
+		for name in body.replace(';', ',').split(','):
 			srcname = self.pathconf(name)
 			if not srcname:
 				continue
@@ -2037,7 +2113,7 @@ class iparser (object):
 					self.error('error: %s: Unknow file type'%absname, \
 						fname, lineno)
 					return -2
-				self.push_src(absname)
+				self.push_src(absname, options)
 		return 0
 
 	# 处理：分析信息
@@ -2248,6 +2324,8 @@ class iparser (object):
 	
 	# 设置终端颜色
 	def console (self, color):
+		if not os.isatty(sys.stdout.fileno()):
+			return False
 		if sys.platform[:3] == 'win':
 			try: import ctypes
 			except: return 0
@@ -2468,7 +2546,8 @@ class emake (object):
 		#print 'open', parser.out, parser.mode, parser.int
 		for src in self.parser:
 			obj = self.parser[src]
-			self.coremake.push(src, obj)
+			opt = self.parser.optdict[src]
+			self.coremake.push(src, obj, opt)
 		savedir = os.getcwd()
 		os.chdir(os.path.dirname(os.path.abspath(makefile)))
 		hr = self._config()
@@ -2524,7 +2603,7 @@ class emake (object):
 	
 	def compile (self, printmode = -1):
 		if not self.loaded:
-			return -10
+			return 1
 		dirty = 0
 		for src in self.parser:
 			if src in self.dependence._dirty:
@@ -2539,13 +2618,13 @@ class emake (object):
 		if self.cpus >= 0:
 			cpus = self.cpus
 		retval = self.coremake.compile(True, self.parser.info, cpus)
-		return retval
+		if retval != 0:
+			return 2
+		return 0
 	
 	def link (self, printmode = -1):
 		if not self.loaded:
-			return -10
-		if not self.loaded:
-			return ''
+			return 1
 		update = False
 		outname = self.parser.out
 		outtime = self.dependence.mtime(outname)
@@ -2561,22 +2640,23 @@ class emake (object):
 		retval = self.coremake.link(True, self.parser.info)
 		if retval:
 			self.coremake.event(self.parser.events.get('postbuild', []))
-		return retval
+			return 0
+		return 3
 	
 	def build (self, printmode = -1):
 		if not self.loaded:
-			return -10
+			return 1
 		retval = self.compile(printmode)
 		if retval != 0:
-			return retval
+			return 2
 		retval = self.link(printmode)
-		if not retval:
-			return -20
+		if retval != 0:
+			return 3
 		return 0
 	
 	def clean (self):
 		if not self.loaded:
-			return -10
+			return 1
 		for src in self.parser:
 			obj = self.parser[src]
 			if obj != src:
@@ -2587,28 +2667,28 @@ class emake (object):
 	
 	def rebuild (self, printmode = -1):
 		if not self.loaded:
-			return -10
+			return 1
 		self.clean()
 		return self.build(printmode)
 
 	def execute (self):
 		if not self.loaded:
-			return -10
+			return 1
 		outname = os.path.abspath(self.parser.out)
 		if not self.parser.mode in ('exe', 'win'):
 			sys.stderr.write('cannot execute: \'%s\'\n'%outname)
 			sys.stderr.flush()
-			return -1
+			return 8
 		if not os.path.exists(outname):
 			sys.stderr.write('cannot find: \'%s\'\n'%outname)
 			sys.stderr.flush()
-			return -2
+			return 9
 		os.system('"%s"'%outname)
 		return 0
 	
 	def call (self, cmdline):
 		if not self.loaded:
-			return -10
+			return 1
 		self.coremake.event([cmdline])
 		return 0
 		
@@ -2773,7 +2853,7 @@ def update():
 	return 0
 
 def help():
-	print "Emake v3.60 Sep.25 2015"
+	print "Emake 3.6.3 Sep.1 2016"
 	print "By providing a completely new way to build your projects, Emake"
 	print "is a easy tool which controls the generation of executables and other"
 	print "non-source files of a program from the program's source files. "
@@ -2831,7 +2911,7 @@ def main(argv = None):
 			break
 
 	if len(argv) == 1:
-		version = '(emake v3.60 Sep.25 2015 %s)'%sys.platform
+		version = '(emake 3.6.3 Sep.1 2016 %s)'%sys.platform
 		print 'usage: "emake.py [option] srcfile" %s'%version
 		print 'options  :  -b | -build      build project'
 		print '            -c | -compile    compile project'
@@ -2840,8 +2920,9 @@ def main(argv = None):
 		print '            -e | -execute    execute project'
 		print '            -o | -out        show output file name'
 		print '            -d | -cmdline    call cmdline tool in given environ'
-		print '            -g | -cygwin     cygwin execute'
-		print '            -s | -cshell     cygwin shell'
+		if sys.platform[:3] == 'win':
+			print '            -g | -cygwin     cygwin execute'
+			print '            -s | -cshell     cygwin shell'
 		print '            -i | -install    install emake on unix'
 		print '            -u | -update     update itself from github'
 		print '            -h | -help       show help page'
@@ -2987,27 +3068,29 @@ def main(argv = None):
 		sys.stderr.flush()
 		return -1
 
+	retval = 0
+
 	if cmd in ('b', '-b', '--b', 'build', '-build', '--build'):
 		make.open(name)
-		make.build(printmode)
+		retval = make.build(printmode)
 	elif cmd in ('c', '-c', '--c', 'compile', '-compile', '--compile'):
 		make.open(name)
-		make.compile(printmode)
+		retval = make.compile(printmode)
 	elif cmd in ('l', '-l', '--l', 'link', '-link', '--link'):
 		make.open(name)
-		make.link(printmode)
+		retval = make.link(printmode)
 	elif cmd in ('clean', '-clean', '--clean'):
 		make.open(name)
-		make.clean()
+		retval = make.clean()
 	elif cmd in ('r', '-r', '--r', 'rebuild', '-rebuild', '--rebuild'):
 		make.open(name)
-		make.rebuild(printmode)
+		retval = make.rebuild(printmode)
 	elif cmd in ('e', '-e', '--e', 'execute', '-execute', '--execute'):
 		make.open(name)
-		make.execute()
+		retval = make.execute()
 	elif cmd in ('a', '-a', '--a', 'call', '-call', '--call'):
 		make.open(name)
-		make.call(' '.join(argv[3:]))
+		retval = make.call(' '.join(argv[3:]))
 	elif cmd in ('o', '-o', '--o', 'out', '-out', '--out'):
 		make.open(name)
 		make.info('outname');
@@ -3020,7 +3103,11 @@ def main(argv = None):
 	elif cmd in ('home', '-home'):
 		make.open(name)
 		make.info('home')
-	return 0
+	else:
+		sys.stderr.write('unknow command: %s\n'%cmd)
+		sys.stderr.flush()
+		retval = 127
+	return retval
 
 
 #----------------------------------------------------------------------
@@ -3089,7 +3176,7 @@ if __name__ == '__main__':
 		main()
 	
 	#test10()
-	main()
+	sys.exit( main() )
 	#install()
 
 
