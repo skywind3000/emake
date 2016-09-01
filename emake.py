@@ -2923,6 +2923,8 @@ def main(argv = None):
 	for i in xrange(len(argv)):
 		if argv[i][:len(match)] == match:
 			inipath = os.path.abspath(argv[i][len(match):].strip())
+			if '~' in inipath:
+				inipath = os.path.expanduser(inipath)
 			argv.pop(i)
 			break
 
