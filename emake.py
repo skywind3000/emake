@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #======================================================================
 #
-# emake.py - emake version 3.6.2
+# emake.py - emake version 3.6.5
 #
 # history of this file:
 # 2009.08.20   skywind   create this file
@@ -23,6 +23,7 @@
 # 2016.01.14   skywind   new compile flags with different source file
 # 2016.04.27   skywind   exit non-zero when error occurs
 # 2016.09.01   skywind   new lib composite method
+# 2016.09.02   skywind   more environ variables rather than $(target)
 #
 #======================================================================
 import sys, time, os
@@ -2141,8 +2142,23 @@ class iparser (object):
 			if not match:
 				#print '"%s" not in %s'%(condition, self.config.name)
 				return 0
-		if '$(target)' in body and self.config.target:
-			body = body.replace('$(target)', self.config.target)
+		environ = {}
+		environ['target'] = self.config.target
+		environ['int'] = self.int
+		environ['out'] = self.out
+		environ['mode'] = self.mode
+		environ['home'] = os.path.dirname(os.path.abspath(fname))
+		environ['bin'] = self.config.dirhome
+		for name in ('gcc', 'ar', 'ld', 'as', 'nasm', 'yasm', 'dllwrap'):
+			if name in self.config.exename:
+				data = self.config.exename[name]
+				environ[name] = os.path.join(self.config.dirhome, data)
+		environ['cc'] = environ['gcc']
+		for name in environ:
+			key = '$(%s)'%name
+			val = environ[name]
+			if key in body:
+				body = body.replace(key, val)
 		if command in ('out', 'output'):
 			self.out = os.path.abspath(self.pathconf(body))
 			return 0
@@ -2853,7 +2869,7 @@ def update():
 	return 0
 
 def help():
-	print "Emake 3.6.3 Sep.1 2016"
+	print "Emake 3.6.5 Sep.2 2016"
 	print "By providing a completely new way to build your projects, Emake"
 	print "is a easy tool which controls the generation of executables and other"
 	print "non-source files of a program from the program's source files. "
@@ -2911,7 +2927,7 @@ def main(argv = None):
 			break
 
 	if len(argv) == 1:
-		version = '(emake 3.6.3 Sep.1 2016 %s)'%sys.platform
+		version = '(emake 3.6.5 Sep.2 2016 %s)'%sys.platform
 		print 'usage: "emake.py [option] srcfile" %s'%version
 		print 'options  :  -b | -build      build project'
 		print '            -c | -compile    compile project'
