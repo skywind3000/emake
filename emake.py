@@ -1665,6 +1665,9 @@ class coremake(object):
 				if not self._task_finish:
 					#print '[%d] %s'%(id, name)
 					print name
+			if sys.platform[:3] == 'win':
+				lines = [ x.rstrip('\r\n') for x in output.split('\n') ]
+				output = '\n'.join(lines)
 			sys.stdout.write(output)
 			sys.stdout.flush()
 			mutex.release()
