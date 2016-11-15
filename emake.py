@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python2
 # -*- coding: utf-8 -*-
 #======================================================================
 #
@@ -2840,7 +2840,7 @@ def getemake():
 			print 'failed '
 			print e
 		head = content.split('\n')[0].strip('\r\n\t ')
-		if head != '#! /usr/bin/env python':
+		if head[:22] != '#! /usr/bin/env python':
 			if success:
 				print 'error'
 			success = False
@@ -2872,7 +2872,7 @@ def update():
 	return 0
 
 def help():
-	print "Emake 3.6.5 Sep.2 2016"
+	print "Emake 3.6.6 Nov.16 2016"
 	print "By providing a completely new way to build your projects, Emake"
 	print "is a easy tool which controls the generation of executables and other"
 	print "non-source files of a program from the program's source files. "
@@ -2933,7 +2933,7 @@ def main(argv = None):
 			break
 
 	if len(argv) == 1:
-		version = '(emake 3.6.5 Sep.2 2016 %s)'%sys.platform
+		version = '(emake 3.6.6 Nov.16 2016 %s)'%sys.platform
 		print 'usage: "emake.py [option] srcfile" %s'%version
 		print 'options  :  -b | -build      build project'
 		print '            -c | -compile    compile project'
