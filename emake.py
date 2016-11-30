@@ -276,7 +276,7 @@ class preprocessor(object):
 		return head, lost, text
 
 	# 查询 Java的信息，返回：(package, imports, classname)
-	def java_parse (self, text):
+	def java_preprocess (self, text):
 		text = self.preprocess(text)
 		content = text.replace('\r', '')
 		p1 = content.find('{')
@@ -293,12 +293,45 @@ class preprocessor(object):
 			if len(data) < 2: continue
 			name = data[0]
 			if name == 'package':
-				info['package'] = data[1]
+				info['package'] = ''.join(data[1:])
 			elif name == 'import':
-				info['import'] += [data[1]]
+				info['import'] += [''.join(data[1:])]
 			elif 'class' in data[:-1]:
 				info['class'] = data[-1]
 		return info['package'], info['import'], info['class']
+
+	# returns: (package, imports, classname, srcpath)
+	def java_parse (self, filename):
+		try:
+			text = open(filename).read()
+		except:
+			return None, None, None, None
+		package, imports, classname = self.java_preprocess(text)
+		if package is None:
+			path = os.path.dirname(filename)
+			return None, imports, classname, os.path.abspath(path)
+		path = os.path.abspath(os.path.dirname(filename))
+		if sys.platform[:3] == 'win':
+			path = path.replace('\\', '/')
+		names = package.split('.')
+		root = path
+		srcpath = None
+		if sys.platform[:3] == 'win':
+			root = root.lower()
+			names = [n.lower() for n in names]
+		while 1:
+			part = os.path.split(root)
+			name = names[-1]
+			names = names[:-1]
+			if name != part[1]:
+				break
+			if len(names) == 0:
+				srcpath = part[0]
+				break
+			if root == part[0]:
+				break
+			root = part[0]
+		return package, imports, classname, srcpath
 	
 
 #----------------------------------------------------------------------
