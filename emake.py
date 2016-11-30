@@ -296,7 +296,13 @@ class preprocessor(object):
 				info['package'] = ''.join(data[1:])
 			elif name == 'import':
 				info['import'] += [''.join(data[1:])]
-			elif 'class' in data[:-1]:
+			elif 'class' in data or 'interface' in data:
+				if 'extends' in data:
+					p = data.index('extends')
+					data = data[:p]
+				if 'implements' in data:
+					p = data.index('implements')
+					data = data[:p]
 				info['class'] = data[-1]
 		return info['package'], info['import'], info['class']
 
