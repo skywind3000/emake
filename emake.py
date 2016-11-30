@@ -31,7 +31,7 @@ import ConfigParser
 
 
 #----------------------------------------------------------------------
-# preprocessor: C/C++ 预处理器
+# preprocessor: C/C++/Java 预处理器
 #----------------------------------------------------------------------
 class preprocessor(object):
 
@@ -274,6 +274,31 @@ class preprocessor(object):
 		if reset: self.reset()
 		text = self.parse_source(filename, head, lost)
 		return head, lost, text
+
+	# 查询 Java的信息，返回：(package, imports, classname)
+	def java_parse (self, text):
+		text = self.preprocess(text)
+		content = text.replace('\r', '')
+		p1 = content.find('{')
+		p2 = content.rfind('}')
+		if p1 >= 0:
+			if p2 < 0:
+				p2 = len(content)
+			content = content[:p1] + ';\n' + content[p2 + 1:]
+		content = self.cleanup_memo(content).rstrip() + '\n'
+		info = { 'package': None, 'import': [], 'class': None }
+		for line in content.split(';'):
+			line = line.replace('\n', ' ').strip()
+			data = [ n.strip() for n in line.split() ]
+			if len(data) < 2: continue
+			name = data[0]
+			if name == 'package':
+				info['package'] = data[1]
+			elif name == 'import':
+				info['import'] += [data[1]]
+			elif 'class' in data[:-1]:
+				info['class'] = data[-1]
+		return info['package'], info['import'], info['class']
 	
 
 #----------------------------------------------------------------------
