@@ -49,7 +49,7 @@ src: main.c
 
 ```
 
-编译项目：
+是不是比 makefile, cmake 之类的步骤简单多了？编译项目：
 
 ```text
 emake main.mak
@@ -213,7 +213,9 @@ emake 的工程文件里面支持下面几种设置：
 
 指定编译参数，会被直接传递给 gcc.
 
-	flag: 
+	flag: -Wall, -g, -pg
+
+诸如此类
 
 ## Settings
 
