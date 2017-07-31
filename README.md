@@ -20,8 +20,10 @@ Emake 是为快速开发而生的，最初版本在 2009年发布，多年间团
 
 #### Linux / Mac OS X: 
 
-	wget http://skywind3000.github.io/emake/emake.py
-	sudo python2 emake.py -i
+```bash
+wget http://skywind3000.github.io/emake/emake.py
+sudo python2 emake.py -i
+```
 
 运行上面两条指令，十秒内完成安装。emake 会拷贝自己到 /usr/local/bin 下面，后面直接使用 emake 指令操作。
 
@@ -29,8 +31,10 @@ Emake 是为快速开发而生的，最初版本在 2009年发布，多年间团
 	
 下载 emake.py，放到你的 mingw 根目录下（便于 emake 定位 gcc），并且添加到 PATH 环境变量，同级目录新建立一个 emake.cmd 文件，内容如下：
 
-	@echo off
-	d:\dev\python27\python.exe d:\dev\mingw\emake.py %*
+```batch
+@echo off
+d:\dev\python27\python.exe d:\dev\mingw\emake.py %*
+```
 
 修改一下对应路径即可，建立这个 emake.cmd 的批处理文件是为了方便每次敲 emake 就可以工作，避免敲 "python emake.py" 一长串。
 
@@ -38,7 +42,7 @@ Emake 是为快速开发而生的，最初版本在 2009年发布，多年间团
 
 假设你有三个文件：foo.c, bar.c, main.c 共同编译成名字为 main(.exe) 的可执行文件，我们创建 “main.mak” 文件：
 
-```text
+```conf
 ; 指明目标格式：exe, lib, dll 三选一
 mode: exe
 
@@ -51,7 +55,7 @@ src: main.c
 
 是不是比 makefile, cmake 之类的步骤简单多了？编译项目：
 
-```text
+```bash
 emake main.mak
 ```
 
@@ -109,7 +113,7 @@ link 可以直接写 .a 库的文件名：
 
 #### 完整例子
 
-```text
+```conf
 ; 指明目标格式：exe, lib, dll 三选一
 mode: exe
 
