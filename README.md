@@ -47,7 +47,7 @@ d:\dev\python27\python.exe d:\dev\mingw\emake.py %*
 
 假设你有三个文件：foo.c, bar.c, main.c 共同编译成名字为 main(.exe) 的可执行文件，我们创建 “main.mak” 文件：
 
-```conf
+```make
 ; 指明目标格式：exe, lib, dll 三选一
 mode: exe
 
@@ -70,7 +70,7 @@ emake main.mak
 
 如果需要增加编译选项的话：
 
-```text
+```make
 ; 指明目标格式：exe, lib, dll 三选一
 mode: exe
 
@@ -86,39 +86,53 @@ src: main.c
 
 如果项目中使用了数学库 libm.a的话：
 
-	link: m
+```make
+link: m
+```
 
 如果还是用了 libstdc++.a 的话：
 
-	link: m, stdc++
+```make
+link: m, stdc++
+```
 
 或者：
 
-	link: m
-	link: stdc++
+```make 
+link: m
+link: stdc++
+```
 
 link 可以直接写 .a 库的文件名：
 
-	link: ./lib/libmylib.a
+```make
+link: ./lib/libmylib.a
+```
 
 如果需要添加额外的 include 目录 和 lib 目录的话：
 
-	inc: /usr/local/opt/jdk/include
-	lib: /usr/local/opt/jdk/lib
+```make
+inc: /usr/local/opt/jdk/include
+lib: /usr/local/opt/jdk/lib
+```
 
 还可以手动指定输出的文件名：
 
-	out: main
+```make
+out: main
+```
 
 手动指定临时文件夹，避免临时 .o 文件污染当前目录的话：
 
-	int: objs
+```make
+int: objs
+```
 
 这样所有的临时文件就会跑到 objs 目录下面了，想要清理的话，删除  objs目录即可。
 
 #### 完整例子
 
-```conf
+```make
 ; 指明目标格式：exe, lib, dll 三选一
 mode: exe
 
@@ -150,26 +164,34 @@ emake 的工程文件里面支持下面几种设置：
 
 用于声明项目里面的源文件，格式：
 
-	src: file1
-	src: file2
-	...
-	src: filen
+```make
+src: file1
+src: file2
+...
+src: filen
+```
 
 或者：
 
-	src: file1, file2, file3
-	src: file4, file5, file6
+```make
+src: file1, file2, file3
+src: file4, file5, file6
+```
 
 ### inc
 
 声明项目中的 include 文件夹，相当于 gcc 的 -I 命令：
 
-	inc: dir1
-	inc: dir2
+```make
+inc: dir1
+inc: dir2
+```
 
 或者：
 
-	inc: dir1, dir2
+```make
+inc: dir1, dir2
+```
 
 和 src 一样可以使用逗号分隔。
 
@@ -181,13 +203,17 @@ emake 的工程文件里面支持下面几种设置：
 
 添加需要链接的库，相当于 gcc 的 -l 指令：
 
-	link: m, pthread, stdc++
+```make
+link: m, pthread, stdc++
+```
 
 或者：
 
-	link: m
-	link: pthread
-	link: stdc++
+```make
+link: m
+link: pthread
+link: stdc++
+```
 
 同时支持单行和多行模式，编译 C++ 项目别忘记链接 stdc++。
 
@@ -195,7 +221,9 @@ emake 的工程文件里面支持下面几种设置：
 
 目标文件的输出格式：
 
-	mode: [exe|lib|dll|win]
+```make
+mode: [exe|lib|dll|win]
+```
 
 - exe: 生成可执行文件
 - lib: 生成静态链接库
@@ -206,23 +234,31 @@ emake 的工程文件里面支持下面几种设置：
 
 指定目标文件的文件名：
 
-	mode: target_file_name
+```make
+mode: target_file_name
+```
 
 ### int
 
 指定中间临时文件目录，一般设置为：
 
-	int: objs
+```make
+int: objs
+```
 
 或者：
 
-	int: objs/$(target)
+```make
+int: objs/$(target)
+```
 
 ### flag
 
 指定编译参数，会被直接传递给 gcc.
 
-	flag: -Wall, -g, -pg
+```make
+flag: -Wall, -g, -pg
+```
 
 诸如此类
 
