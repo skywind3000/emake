@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #======================================================================
 #
-# emake.py - emake version 3.6.5
+# emake.py - emake version 3.6.7
 #
 # history of this file:
 # 2009.08.20   skywind   create this file
@@ -24,6 +24,7 @@
 # 2016.04.27   skywind   exit non-zero when error occurs
 # 2016.09.01   skywind   new lib composite method
 # 2016.09.02   skywind   more environ variables rather than $(target)
+# 2017.08.16   skywind   new: cflag, cxxflag, sflag, mflag, mmflag
 #
 #======================================================================
 import sys, time, os
@@ -465,6 +466,7 @@ class configure(object):
 		self.link = {}		# 连接库
 		self.flnk = {}		# 连接参数
 		self.wlnk = {}		# 连接传递
+		self.cond = {}		# 条件参数
 		self.param_build = ''
 		self.param_compile = ''
 		return 0
@@ -861,6 +863,13 @@ class configure(object):
 			self.wlnk[wlnk] = len(self.wlnk)
 		return 0
 
+	# 添加条件参数
+	def push_cond (self, flag, condition):
+		key = (flag, condition)
+		if not key in self.cond:
+			self.cond[key] = len(self.cond)
+		return 0
+
 	# 搜索gcc
 	def __search_gcc (self):
 		dirpath = self.dirpath
@@ -904,10 +913,10 @@ class configure(object):
 	
 	# 配置路径
 	def pathconf (self, path):
-		path = path.strip(' \t')
+		path = path.strip(' \t\r\n')
 		if path[:1] == '\'' and path[-1:] == '\'': path = path[1:-1]
 		if path[:1] == '\"' and path[-1:] == '\"': path = path[1:-1]
-		return path
+		return path.strip(' \r\n\t')
 
 	# 刷新配置
 	def loadcfg (self, sect = 'default', reset = True):
@@ -943,6 +952,11 @@ class configure(object):
 			wlnk = wlnk.strip(' \t\r\n')
 			if not wlnk: continue
 			self.push_wlnk(wlnk)
+		for name in ('cflag', 'cxxflag', 'mflag', 'mmflag', 'sflag'):
+			for flag in config(name).replace(';', ',').split(','):
+				flag = flag.strip(' \t\r\n')
+				if not flag: continue
+				self.push_cond(flag, name)
 		self.parameters()
 		return 0
 	
@@ -961,6 +975,14 @@ class configure(object):
 			if check in text:
 				text = text.replace(check, value)
 		return text
+
+	# 返回条件参数
+	def condition (self, conditions):
+		flags = []
+		for flag, cond in self.sequence(self.cond):
+			if cond in conditions:
+				flags.append(flag)
+		return flags
 
 	# 返回序列化的参数	
 	def parameters (self):
@@ -1075,12 +1097,26 @@ class configure(object):
 		if not needlink:
 			param = self.param_compile
 		parameters = '%s %s'%(parameters, param)
-		#printcmd = True
+		# printcmd = True
 		return self.execute(self.exename['gcc'], parameters, printcmd, capture)
 
 	# 编译
 	def compile (self, srcname, objname, cflags, printcmd = False, capture = False):
 		cmd = '-c %s -o %s %s'%(self.pathrel(srcname), self.pathrel(objname), cflags)
+		extname = os.path.splitext(srcname)[-1].lower()
+		cond = []
+		if extname in ('.c', '.h'):
+			cond = self.condition({'cflag':1})
+		elif extname in ('.cpp', '.cc', '.cxx', '.hpp', '.hh'):
+			cond = self.condition({'cxxflag':1})
+		elif extname in ('.s', '.asm'):
+			cond = self.condition({'sflag':1})
+		elif extname in ('.m',):
+			cond = self.condition({'mflag':1})
+		elif extname in ('.mm',):
+			cond = self.condition({'mmflag':1})
+		if cond:
+			cmd = cmd + ' ' + (' '.join(cond))
 		return self.gcc(cmd, False, printcmd, capture)
 	
 	# 使用 dllwrap
@@ -1237,10 +1273,15 @@ class configure(object):
 			stdin, stdouterr = os.popen4('%s --login'%bashpath, 'b')	
 			stdin.write(cmds + '\nexit\n')
 			stdin.flush()
-			output = stdouterr.read()
 			if not capture:
-				sys.stdout.write(output + '\n')
-				sys.stdout.flush()
+				while True:
+					output = stdouterr.readline()
+					if output == '':
+						break
+					sys.stdout.write(output + '\n')
+					sys.stdout.flush()
+			else:
+				output = stdouterr.read()
 		stdin = None
 		stdouterr = None
 		return output
@@ -1872,6 +1913,7 @@ class iparser (object):
 		self.flag = []
 		self.flnk = []
 		self.wlnk = []
+		self.cond = []
 		self.environ = {}
 		self.events = {}
 		self.mode = 'exe'
@@ -1893,6 +1935,7 @@ class iparser (object):
 		self.flagdict = {}
 		self.flnkdict = {}
 		self.wlnkdict = {}
+		self.conddict = {}
 		self.makefile = ''
 	
 	# 取得文件的目标文件名称
@@ -1975,6 +2018,14 @@ class iparser (object):
 			return -1
 		self.wlnkdict[wlnk] = len(self.wlnk)
 		self.wlnk.append(wlnk)
+
+	# 添加条件编译
+	def push_cond (self, flag, condition):
+		key = (flag, condition)
+		if key in self.conddict:
+			return -1
+		self.conddict[key] = len(self.cond)
+		self.cond.append(key)
 	
 	# 添加导入配置
 	def push_imp (self, name, fname = '', lineno = -1):
@@ -2056,7 +2107,7 @@ class iparser (object):
 		path = path.strip(' \r\n\t')
 		if path[:1] == '\'' and path[-1:] == '\'': path = path[1:-1]
 		if path[:1] == '\"' and path[-1:] == '\"': path = path[1:-1]
-		return path
+		return path.strip(' \r\n\t')
 	
 	# 扫描代码中 关键注释的工程信息
 	def _scan_memo (self, filename, prefix = '!'):
@@ -2289,6 +2340,17 @@ class iparser (object):
 					continue
 				self.push_wlnk(srcname)
 			return 0
+		for cond in ('cflag', 'cxxflag', 'sflag', 'mflag', 'mmflag'):
+			if command == cond or command.rstrip('s') == cond:
+				for name in body.replace(';', ',').split(','):
+					flag = self.pathconf(name)
+					if not flag:
+						continue
+					if flag[:2] in ('-o', '-I', '-B', '-L'):
+						self.error('error: %s: invalid option'%flag, \
+								fname, lineno)
+					self.push_cond(flag, cond)
+				return 0
 		if command in ('arglink', 'al'):
 			self.push_flnk(body.strip('\r\n\t '))
 			return 0
@@ -2675,6 +2737,8 @@ class emake (object):
 			#print 'flnk', flnk
 		for wlnk in self.parser.wlnk:
 			self.config.push_wlnk(wlnk)
+		for cond in self.parser.cond:
+			self.config.push_cond(cond[0], cond[1])
 		if self.parser.mode == 'dll' and self.config.unix:
 			if self.config.fpic:
 				self.config.push_flag('-fPIC')
@@ -2936,7 +3000,7 @@ def update():
 	return 0
 
 def help():
-	print "Emake 3.6.6 Nov.16 2016"
+	print "Emake 3.6.7 Aug.16 2017"
 	print "By providing a completely new way to build your projects, Emake"
 	print "is a easy tool which controls the generation of executables and other"
 	print "non-source files of a program from the program's source files. "
