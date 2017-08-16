@@ -3078,7 +3078,7 @@ def main(argv = None):
 			break
 
 	if len(argv) == 1:
-		version = '(emake 3.6.6 Nov.16 2016 %s)'%sys.platform
+		version = '(emake 3.6.7 Aug.16 2017 %s)'%sys.platform
 		print 'usage: "emake.py [option] srcfile" %s'%version
 		print 'options  :  -b | -build      build project'
 		print '            -c | -compile    compile project'
