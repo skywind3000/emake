@@ -499,9 +499,8 @@ class configure(object):
 		config['PATH'] = sep.join(PATH)
 		for n in config:
 			v = config[n]
-			if not n in os.environ:
-				if not n in ('PATH'):
-					os.environ[n] = v
+			if not n in ('PATH',):
+				os.environ[n] = v
 		os.environ['PATH'] = config['PATH']
 		if not self.unix:
 			EXEC = self.pathshort(EXEC)
@@ -514,16 +513,24 @@ class configure(object):
 			for n in self.config[section]:
 				config[n.upper()] = self.config[section][n]
 		for n in config:
-			config[n] = self._expand(config, self.environ, n, config[n])
+			config[n] = config[n].replace('$(INIROOT)', os.path.dirname(self.iniload))
+		for n in config:
+			config[n] = self._expand(config, self.environ, n)
 		return config
 
 	# 展开配置宏
-	def _expand (self, section, environ, item, text, d = 0):
+	def _expand (self, section, environ, item, d = 0):
 		if not environ: environ = {}
 		if not section: section = {}
+		text = ''
+		if item in environ:
+			text = environ[item]
+		if item in section:
+			text = section[item]
 		if d >= 20: return text
 		names = {}
 		index = 0
+		# print 'expanding', item
 		while 1:
 			index = text.find('$(', index)
 			if index < 0: break
@@ -531,15 +538,17 @@ class configure(object):
 			if p2 < 0: break
 			name = text[index + 2:p2]
 			index = p2 + 1
-			names[name] = ''
+			names[name] = name.upper()
 		for name in names:
-			if (name in section) and (name != item):
-				value = self._expand(section, environ, name, section[name], d + 1)
+			if name != item:
+				value = self._expand(section, environ, name.upper(), d + 1)
 			elif name in environ:
-				value = self._expand(section, environ, name, environ[name], d + 1)
+				value = environ[name]
 			else:
-				continue
+				value = ''
 			text = text.replace('$(' + name + ')', value)
+			names[name] = value
+		# print '>', text
 		return text
 	
 	# 取得短文件名
@@ -573,6 +582,7 @@ class configure(object):
 		if self.unix and '~' in inipath:
 			inipath = os.path.expanduser(inipath)
 		if os.path.exists(inipath):
+			self.iniload = os.path.abspath(inipath)
 			config = {}
 			try: self.cp.read(inipath)
 			except: pass
@@ -633,9 +643,11 @@ class configure(object):
 		self.config = {}
 		self.reset()
 		fn = INIPATH
+		self.iniload = os.path.abspath(self.inipath)
 		if fn:
 			if os.path.exists(fn):
 				self._readini(fn)
+				self.iniload = os.path.abspath(fn)
 			else:
 				sys.stderr.write('error: cannot open %s\n'%fn)
 				sys.stderr.flush()
@@ -732,7 +744,7 @@ class configure(object):
 		self.replace = {}
 		self.replace['home'] = self.dirhome
 		self.replace['emake'] = self.dirpath
-		self.replace['inihome'] = os.path.dirname(self.inipath)
+		self.replace['inihome'] = os.path.dirname(self.iniload)
 		self.replace['inipath'] = self.inipath
 		self.replace['target'] = self.target
 		self.inited = True
@@ -769,22 +781,29 @@ class configure(object):
 		return name
 	
 	# 取得短路径：当前路径的相对路径
-	def pathrel (self, name):
+	def relpath (self, name, start = None):
 		name = os.path.abspath(name)
-		if 'relpath' in os.__dict__:
-			name = os.path.relpath(name, os.getcwd())
-			name = self.pathtext(name)
-			return name
-		current = os.getcwd().replace('\\', '/')
+		if not start:
+			start = os.getcwd()
+		if 'relpath' in os.path.__dict__:
+			return os.path.relpath(name, start)
+		current = start.replace('\\', '/')
 		if len(current) > 0:
 			if current[-1] != '/':
 				current += '/'
 		name = self.path(name).replace('\\', '/')
 		size = len(current)
-		if name[:size] == current:
+		if self.unix:
+			if name[:size] == current:
 				name = name[size:]
-		name = self.pathtext(name)
+		else:
+			if name[:size].lower() == current.lower():
+				name = name[size:]
 		return name
+
+	# 取得短路径：当前路径的相对路径
+	def pathrel (self, name, start = None):
+		return self.pathtext(self.relpath(name, start))
 	
 	# 转换到cygwin路径
 	def cygpath (self, path):
@@ -1856,15 +1875,13 @@ class coremake(object):
 		for name in ('gcc', 'ar', 'ld', 'as', 'nasm', 'yasm', 'dllwrap'):
 			environ['EM' + name.upper()] = self.config.getname(name)
 		for k, v in environ.items():	# 展开宏
-			environ[k] = self.config._expand(environ, envsave, k, v)
+			environ[k] = self.config._expand(environ, envsave, k)
 		for k, v in environ.items():
 			os.environ[k] = v
 		# 执行应用
 		workdir = os.path.dirname(self._main)
 		savecwd = os.getcwd()
 		for script in scripts:
-			kk = '==EMAKESCRIPT=='
-			script = self.config._expand(environ, envsave, kk, script)
 			if savecwd != workdir: 
 				os.chdir(workdir)
 			os.system(script)
@@ -3149,11 +3166,17 @@ def main(argv = None):
 		exename = argv[3]
 		parameters = ''
 		for n in [ argv[i] for i in xrange(4, len(argv)) ]:
-			if ' ' in n: n = '"' + n + '"'
 			if cmd in ('-m', '--m'):
 				if n[:2] == '${' and n[-1:] == '}':
 					n = extract(n)
 					if not n: continue
+			if config.unix:
+				n = n.replace('\\', '\\\\').replace('"', '\\"')
+				n = n.replace("'", "\\'").replace(' ', '\\ ')
+				n = n.replace('\t', '\\t')
+			else:
+				if ' ' in n:
+					n = '"' + n + '"'
 			parameters += n + ' '
 		config.cmdtool(envname, exename, parameters)
 		return 0
