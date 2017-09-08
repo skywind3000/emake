@@ -10,7 +10,7 @@
 # 2009.12.22   skywind   implementation execute interface
 # 2010.01.18   skywind   new project info
 # 2010.03.14   skywind   fixed source lex bug
-# 2010.11.03   skywind   new 'import' to import config section 
+# 2010.11.03   skywind   new 'import' to import config section
 # 2010.11.04   skywind   new 'export' to export .def, .lib for windll
 # 2010.11.27   skywind   fixed link sequence with -Xlink -( -)
 # 2012.03.26   skywind   multiprocess building system, speed up
@@ -69,7 +69,7 @@ class preprocessor(object):
 						if content[i] in spaces:
 							output(content[i])
 							i = i + 1
-							continue						
+							continue
 						output('`')
 						i = i + 1
 					continue
@@ -145,7 +145,7 @@ class preprocessor(object):
 			fp = open(source, "r")
 		except:
 			return ''
-		
+
 		content = '\n'.join([ line.strip('\r\n') for line in fp ])
 		fp.close()
 
@@ -184,7 +184,7 @@ class preprocessor(object):
 
 			if check != 1:
 				continue
-			
+
 			name = content[offset3 + 1 : offset4]
 			heads.append([name, offset1, offset4, number])
 
@@ -340,7 +340,7 @@ class preprocessor(object):
 				break
 			root = part[0]
 		return package, imports, classname, srcpath
-	
+
 
 #----------------------------------------------------------------------
 # execute and capture
@@ -369,7 +369,7 @@ def execute(args, shell = False, capture = False):
 			text = ''.join([ replace.get(ch, ch) for ch in n ])
 			parameters.append(text)
 		else:
-			if (' ' in n) or ('\t' in n) or ('"' in n): 
+			if (' ' in n) or ('\t' in n) or ('"' in n):
 				parameters.append('"%s"'%(n.replace('"', ' ')))
 			else:
 				parameters.append(n)
@@ -391,7 +391,7 @@ def execute(args, shell = False, capture = False):
 			stdin, stdouterr = os.popen4(cmd)
 		else:
 			p = subprocess.Popen(args, shell = shell,
-					stdin = subprocess.PIPE, stdout = subprocess.PIPE, 
+					stdin = subprocess.PIPE, stdout = subprocess.PIPE,
 					stderr = subprocess.STDOUT)
 			stdin, stdouterr = (p.stdin, p.stdout)
 	else:
@@ -457,7 +457,7 @@ class configure(object):
 		self.extnames = ext
 		self.__jdk_home = None
 		self.reset()
-	
+
 	# 配置信息复位
 	def reset (self):
 		self.inc = {}		# include路径
@@ -471,7 +471,7 @@ class configure(object):
 		self.param_build = ''
 		self.param_compile = ''
 		return 0
-	
+
 	# 初始化工具环境
 	def _cmdline_init (self, envname, exename):
 		if not envname in self.config:
@@ -506,7 +506,7 @@ class configure(object):
 		if not self.unix:
 			EXEC = self.pathshort(EXEC)
 		return EXEC
-	
+
 	# 工具加载
 	def _env_config (self, section):
 		config = {}
@@ -551,7 +551,7 @@ class configure(object):
 			names[name] = value
 		# print('>', text)
 		return text
-	
+
 	# 取得短文件名
 	def pathshort (self, path):
 		path = os.path.abspath(path)
@@ -576,7 +576,7 @@ class configure(object):
 		if retval <= 0:
 			return ''
 		return shortpath
-	
+
 	# 读取ini文件
 	def _readini (self, inipath):
 		self.cp = ConfigParser.ConfigParser()
@@ -687,7 +687,7 @@ class configure(object):
 				self.dirhome = self.__search_gcc()
 		if self.dirhome:
 			self.dirhome = os.path.abspath(self.dirhome)
-		try: 
+		try:
 			cpus = self._getitem('default', 'cpu', '')
 			intval = int(cpus)
 			self.cpus = intval
@@ -754,7 +754,7 @@ class configure(object):
 	# 读取配置
 	def _getitem (self, sect, key, default = ''):
 		return self.config.get(sect, {}).get(key, default)
-	
+
 	# 取得替换了$(HOME)变量的路径
 	def path (self, path):
 		path = path.replace('$(HOME)', self.dirhome).replace('\\', '/')
@@ -769,7 +769,7 @@ class configure(object):
 				text += n
 				issep = False
 		return os.path.abspath(text)
-	
+
 	# 取得可用于参数的文本路径
 	def pathtext (self, name):
 		name = os.path.normpath(name)
@@ -780,7 +780,7 @@ class configure(object):
 		if self.unix:
 			name = name.replace('\\', '/')
 		return name
-	
+
 	# 取得短路径：当前路径的相对路径
 	def relpath (self, name, start = None):
 		name = os.path.abspath(name)
@@ -805,13 +805,13 @@ class configure(object):
 	# 取得短路径：当前路径的相对路径
 	def pathrel (self, name, start = None):
 		return self.pathtext(self.relpath(name, start))
-	
+
 	# 转换到cygwin路径
 	def cygpath (self, path):
 		if self.unix and path[1:2] == ':':
 			path = '/cygdrive/%s%s'%(path[0], path[2:].replace('\\', '/'))
 		return path
-	
+
 	# 转换到cygwin路径
 	def win2cyg (self, path):
 		path = os.path.abspath(path)
@@ -839,7 +839,7 @@ class configure(object):
 		path = self.pathtext(path)
 		self.inc[path] = 1
 		return 0
-	
+
 	# 添加库文件目录
 	def push_lib (self, lib):
 		path = self.path(lib)
@@ -849,13 +849,13 @@ class configure(object):
 		path = self.pathtext(path)
 		self.lib[path] = 1
 		return 0
-	
+
 	# 添加参数
 	def push_flag (self, flag):
 		if not flag in self.flag:
 			self.flag[flag] = len(self.flag)
 		return 0
-	
+
 	# 添加链接库
 	def push_link (self, link):
 		if link[-2:].lower() in ('.o', '.a'):
@@ -866,17 +866,17 @@ class configure(object):
 			self.link[link] = len(self.link)
 		#print('push: ' + link)
 		return 0
-	
+
 	# 添加预定义
 	def push_pdef (self, define):
 		self.pdef[define] = 1
-	
+
 	# 添加连接参数
 	def push_flnk (self, flnk):
 		if not flnk in self.flnk:
 			self.flnk[flnk] = len(self.flnk)
 		return 0
-	
+
 	# 添加链接传递
 	def push_wlnk (self, wlnk):
 		if not wlnk in self.wlnk:
@@ -916,7 +916,7 @@ class configure(object):
 			if os.path.exists('/opt/usr/local/bin/%s'%gcc):
 				return '/opt/usr/local/bin'
 		return ''
-	
+
 	# 写默认的配置文件
 	def _write_default_ini (self):
 		default = '''	[default]
@@ -930,7 +930,7 @@ class configure(object):
 		fp.write(text)
 		fp.close()
 		return 0
-	
+
 	# 配置路径
 	def pathconf (self, path):
 		path = path.strip(' \t\r\n')
@@ -979,15 +979,15 @@ class configure(object):
 				self.push_cond(flag, name)
 		self.parameters()
 		return 0
-	
+
 	# 按字典值顺序取出配置
 	def sequence (self, data):
 		x = [ (n, k) for (k, n) in data.items() ]
 		x.sort()
 		y = [ n for (k, n) in x ]
 		return y
-	
-	# 替换字符串 
+
+	# 替换字符串
 	def __replace_key (self, text):
 		for key in self.replace:
 			value = self.replace[key]
@@ -1004,7 +1004,7 @@ class configure(object):
 				flags.append(flag)
 		return flags
 
-	# 返回序列化的参数	
+	# 返回序列化的参数
 	def parameters (self):
 		text = ''
 		for inc in self.sequence(self.inc):
@@ -1069,7 +1069,7 @@ class configure(object):
 					dict[path] = 0
 		self.searchdirs = data
 		return data
-	
+
 	# 检测库是否存在
 	def checklib (self, name):
 		name = 'lib' + name + '.a'
@@ -1080,7 +1080,7 @@ class configure(object):
 			if os.path.exists(os.path.join(n, name)):
 				return True
 		return False
-	
+
 	# 取得可执行名称
 	def getname (self, binname):
 		exename = self.exename.get(binname, binname)
@@ -1091,7 +1091,7 @@ class configure(object):
 					name = self.pathshort(path + '.exe')
 				if name: path = name
 		return path
-	
+
 	# 执行GNU工具集
 	def execute (self, binname, parameters, printcmd = False, capture = False):
 		path = os.path.abspath(os.path.join(self.dirhome, binname))
@@ -1110,7 +1110,7 @@ class configure(object):
 		sys.stderr.flush()
 		text = text + execute(cmd, shell = False, capture = capture)
 		return text
-	
+
 	# 调用 gcc
 	def gcc (self, parameters, needlink, printcmd = False, capture = False):
 		param = self.param_build
@@ -1138,7 +1138,7 @@ class configure(object):
 		if cond:
 			cmd = cmd + ' ' + (' '.join(cond))
 		return self.gcc(cmd, False, printcmd, capture)
-	
+
 	# 使用 dllwrap
 	def dllwrap (self, parameters, printcmd = False, capture = False):
 		text = ''
@@ -1151,7 +1151,7 @@ class configure(object):
 		parameters = '%s %s'%(parameters, text)
 		dllwrap = self.exename.get('dllwrap', 'dllwrap')
 		return self.execute(dllwrap, parameters, printcmd, capture)
-	
+
 	# 生成lib库
 	def makelib (self, output, objs = [], printcmd = False, capture = False):
 		if 0:
@@ -1164,7 +1164,7 @@ class configure(object):
 				if os.path.exists(link):
 					objs.append(link)
 		return self.composite(output, objs, printcmd, capture)
-	
+
 	# 生成动态链接：dll 或者 so
 	def makedll (self, output, objs = [], param = '', printcmd = False, capture = False):
 		if (not param) or (self.unix):
@@ -1177,10 +1177,10 @@ class configure(object):
 			return self.makeexe(output, objs, param, printcmd, capture)
 		else:
 			name = ' '.join([ self.pathrel(n) for n in objs ])
-			parameters = '%s -o %s %s'%(param, 
+			parameters = '%s -o %s %s'%(param,
 				self.pathrel(output), name)
 			return self.dllwrap(parameters, printcmd, capture)
-	
+
 	# 生成exe
 	def makeexe (self, output, objs = [], param = '', printcmd = False, capture = False):
 		name = ' '.join([ self.pathrel(n) for n in objs ])
@@ -1189,7 +1189,7 @@ class configure(object):
 		parameters = '-o %s %s %s'%(self.pathrel(output), param, name)
 		return self.gcc(parameters, True, printcmd, capture)
 
-	# 合并.o .a文件为新的 .a文件 
+	# 合并.o .a文件为新的 .a文件
 	def composite (self, output, objs = [], printcmd = False, capture = False):
 		import os, tempfile, shutil
 		cwd = os.getcwd()
@@ -1270,7 +1270,7 @@ class configure(object):
 		for n in remove:
 			del os.environ[n]
 		return 0
-	
+
 	# 调用 Cygwin Bash
 	def cygwin_bash (self, cmds, capture = False):
 		import subprocess
@@ -1290,7 +1290,7 @@ class configure(object):
 			p.wait()
 		else:
 			p = None
-			stdin, stdouterr = os.popen4('%s --login'%bashpath, 'b')	
+			stdin, stdouterr = os.popen4('%s --login'%bashpath, 'b')
 			stdin.write(cmds + '\nexit\n')
 			stdin.flush()
 			if not capture:
@@ -1305,7 +1305,7 @@ class configure(object):
 		stdin = None
 		stdouterr = None
 		return output
-	
+
 	# 运行 Cygwin 命令行
 	def cygwin_execute (self, sect, exename, parameters = '', capture = 0):
 		capture = capture and True or False
@@ -1397,7 +1397,7 @@ class configure(object):
 		cflags = ' '.join(pythoninc)
 		ldflags = ' '.join(pythonlib)
 		return cflags, ldflags
-	
+
 	# 最终完成 java配置
 	def __java_final (self, home):
 		path = [ home ]
@@ -1468,7 +1468,7 @@ class configure(object):
 		if not jdk:
 			return ''
 		return self.__java_final(os.path.join(jdk, 'include'))
-	
+
 	# 执行 java命令: cmd 为 java, javac, jar等
 	def java_call (self, cmd, args = [], capture = False):
 		if self.__jdk_home == None:
@@ -1492,16 +1492,16 @@ class configure(object):
 		if not self.unix:
 			cmd = self.pathshort(cmd)
 		cmds = [ cmd ]
-		for n in args: 
+		for n in args:
 			cmds.append(n)
 		return execute(cmds, False, capture)
-		
+
 
 #----------------------------------------------------------------------
 # coremake: 核心工程编译，提供 Compile/Link/Build
 #----------------------------------------------------------------------
 class coremake(object):
-	
+
 	# 构造函数
 	def __init__ (self, ininame = ''):
 		self.ininame = ininame
@@ -1513,7 +1513,7 @@ class coremake(object):
 		for k, v in os.environ.items():
 			self.envos[k] = v
 		self.reset()
-	
+
 	# 复位配置
 	def reset (self):
 		self.config.reset()
@@ -1527,7 +1527,7 @@ class coremake(object):
 		self._export = {}	# DLL导出配置
 		self._environ = {}	# 环境变量
 		self.inited = 0
-		
+
 	# 初始化：设置工程名字，类型，以及中间文件的目录
 	def init (self, main, out = 'a.out', mode = 'exe', intermediate = ''):
 		if not mode in ('exe', 'win', 'dll', 'lib'):
@@ -1540,7 +1540,7 @@ class coremake(object):
 		self._out = os.path.abspath(out)
 		self._int = intermediate
 		self._out = self.outname(self._out, mode)
-	
+
 	# 取得源文件对应的目标文件：给定源文件名和中间文件目录名
 	def objname (self, srcname, intermediate = ''):
 		part = os.path.splitext(srcname)
@@ -1555,7 +1555,7 @@ class coremake(object):
 		if not ext in ('.o', '.obj'):
 			raise Exception('unknow ext-type of %s\n'%srcname)
 		return srcname
-	
+
 	# 取得输出文件的文件名
 	def outname (self, output, mode = 'exe'):
 		if not mode in ('exe', 'win', 'dll', 'lib'):
@@ -1573,7 +1573,7 @@ class coremake(object):
 			elif part[1]:
 				output += part[1]
 		elif mode == 'dll':
-			if not part[1]: 
+			if not part[1]:
 				if not self.unix: output += '.dll'
 				else: output += '.so'
 			else:
@@ -1582,7 +1582,7 @@ class coremake(object):
 			if not part[1]: output += '.a'
 			else: output += part[1]
 		return output
-	
+
 	# 根据源文件列表取得目标文件列表
 	def scan (self, sources, intermediate = ''):
 		src2obj = {}
@@ -1602,13 +1602,13 @@ class coremake(object):
 			obj2src[obj] = src
 		obj2src = None
 		return src2obj
-	
+
 	# 添加源文件和目标文件
 	def push (self, srcname, objname, options):
 		self._src.append(os.path.abspath(srcname))
 		self._obj.append(os.path.abspath(objname))
 		self._opt.append(options)
-	
+
 	# 创建目录
 	def mkdir (self, path):
 		path = os.path.abspath(path)
@@ -1625,7 +1625,7 @@ class coremake(object):
 			if not os.path.exists(name):
 				os.mkdir(name)
 		return 0
-	
+
 	# 删除目录
 	def remove (self, path):
 		try: os.remove(path)
@@ -1635,7 +1635,7 @@ class coremake(object):
 			sys.stderr.flush()
 			sys.exit(0)
 		return 0
-	
+
 	# DLL配置
 	def dllwrap (self, name):
 		if sys.platform[:3] != 'win':
@@ -1661,7 +1661,7 @@ class coremake(object):
 			self._export['msvc'] = main + '.lib'
 			self._export['msvc64'] = 1
 		return 0
-	
+
 	# DLL export的参数
 	def _dllparam (self):
 		defname = self._export.get('def', '')
@@ -1677,7 +1677,7 @@ class coremake(object):
 		if libname:
 			param += '--implib %s '%self.config.pathrel(libname)
 		return param
-	
+
 	# DLL 编译完成后的事情
 	def _dllpost (self):
 		defname = self._export.get('def', '')
@@ -1698,7 +1698,7 @@ class coremake(object):
 		parameters += ' /out:' + msvclib
 		self.config.cmdtool('msvc', 'LIB.EXE', parameters, False)
 		return 0
-	
+
 	# 单核编译：skipexist(是否需要跳过已有的obj文件)
 	def _compile_single (self, skipexist, printmode, printcmd):
 		retval = 0
@@ -1722,7 +1722,7 @@ class coremake(object):
 				retval = -1
 				break
 		return retval
-	
+
 	# 多核编译：skipexist(是否需要跳过已有的obj文件)
 	def _compile_threading (self, skipexist, printmode, printcmd, cpus):
 		# 估算编译时间，文件越大假设时间越长，放在最前面
@@ -1751,7 +1751,7 @@ class coremake(object):
 				self._task_retval = -1
 				break
 		return self._task_retval
-	
+
 	# 具体编译线程
 	def _compile_working_thread (self, skipexist, printmode, printcmd, id):
 		mutex = self._task_lock
@@ -1816,7 +1816,7 @@ class coremake(object):
 		t = time.time() - t
 		#print('time', t)
 		return retval
-	
+
 	# 连接：(是否跳过已有的文件)
 	def link (self, skipexist = False, printmode = 0):
 		self.config.check()
@@ -1839,21 +1839,21 @@ class coremake(object):
 		elif self._mode == 'dll':
 			param = self._dllparam()
 			self.config.makedll(output, self._obj, param, printcmd)
-			if param and os.path.exists(output): 
+			if param and os.path.exists(output):
 				self._dllpost()
 		elif self._mode == 'lib':
 			self.config.makelib(output, self._obj, printcmd)
 		if not os.path.exists(output):
 			return ''
 		return output
-	
+
 	# 执行编译事件
 	def event (self, scripts):
 		if not scripts:
 			return False
 		# 保存环境
 		envsave = {}
-		for k, v in os.environ.items(): 
+		for k, v in os.environ.items():
 			envsave[k] = v
 		# 初始化环境
 		environ = {}
@@ -1883,19 +1883,19 @@ class coremake(object):
 		workdir = os.path.dirname(self._main)
 		savecwd = os.getcwd()
 		for script in scripts:
-			if savecwd != workdir: 
+			if savecwd != workdir:
 				os.chdir(workdir)
 			os.system(script)
 		os.chdir(savecwd)
 		# 恢复环境
 		for k, v in envsave.items():
-			if os.environ.get(k) != v: 
+			if os.environ.get(k) != v:
 				os.environ[k] = v
 		for k in os.environ.keys():
-			if not k in envsave: 
+			if not k in envsave:
 				del os.environ[k]
 		return True
-	
+
 	# 编译与连接
 	def build (self, skipexist = False, printmode = 0):
 		if self.compile(skipexist, printmode) != 0:
@@ -1911,7 +1911,7 @@ class coremake(object):
 # iparser: 工程分析器，分析各种配置信息
 #----------------------------------------------------------------------
 class iparser (object):
-	
+
 	# 构造函数
 	def __init__ (self, ininame = ''):
 		self.preprocessor = preprocessor()
@@ -1955,28 +1955,28 @@ class iparser (object):
 		self.wlnkdict = {}
 		self.conddict = {}
 		self.makefile = ''
-	
+
 	# 取得文件的目标文件名称
 	def __getitem__ (self, key):
 		return self.srcdict[key]
-	
+
 	# 取得模块个数
 	def __len__ (self):
 		return len(self.srcdict)
-	
+
 	# 检测是否包含模块
 	def __contains__ (self, key):
 		return (key in self.srcdict)
-	
+
 	# 取得迭代器
 	def __iter__ (self):
 		return self.src.__iter__()
-	
+
 	# 添加代码
 	def push_src (self, filename, options):
 		filename = os.path.abspath(filename)
 		realname = os.path.normcase(filename)
-		if filename in self.srcdict:	
+		if filename in self.srcdict:
 			return -1
 		if realname in self.chkdict:
 			return -1
@@ -1985,7 +1985,7 @@ class iparser (object):
 		self.optdict[filename] = options
 		self.src.append(filename)
 		return 0
-	
+
 	# 添加链接
 	def push_link (self, linkname):
 		if linkname in self.linkdict:
@@ -1993,7 +1993,7 @@ class iparser (object):
 		self.linkdict[linkname] = len(self.link)
 		self.link.append(linkname)
 		return 0
-	
+
 	# 添加头路径
 	def push_inc (self, inc):
 		if inc in self.incdict:
@@ -2009,7 +2009,7 @@ class iparser (object):
 		self.libdict[lib] = len(self.lib)
 		self.lib.append(lib)
 		return 0
-	
+
 	# 添加参数
 	def push_flag (self, flag):
 		if flag in self.flagdict:
@@ -2017,12 +2017,12 @@ class iparser (object):
 		self.flagdict[flag] = len(self.flag)
 		self.flag.append(flag)
 		return 0
-	
+
 	# 添加宏定义
 	def push_define (self, define, value = 1):
 		self.define[define] = value
 		return 0
-	
+
 	# 添加连接参数
 	def push_flnk (self, flnk):
 		if flnk in self.flnkdict:
@@ -2044,7 +2044,7 @@ class iparser (object):
 			return -1
 		self.conddict[key] = len(self.cond)
 		self.cond.append(key)
-	
+
 	# 添加导入配置
 	def push_imp (self, name, fname = '', lineno = -1):
 		if name in self.impdict:
@@ -2052,24 +2052,24 @@ class iparser (object):
 		self.impdict[name] = len(self.imp)
 		self.imp.append((name, fname, lineno))
 		return 0
-	
+
 	# 添加输出配置
 	def push_exp (self, name, fname = '', lineno = -1):
 		if name in self.expdict:
 			return -1
 		self.expdict[name] = len(self.exp)
 		self.exp.append((name, fname, lineno))
-	
+
 	# 添加环境变量
 	def push_environ (self, name, value):
 		self.environ[name] = value
-	
+
 	# 添加编译事件
 	def push_event (self, name, value):
 		if not name in self.events:
 			self.events[name] = []
 		self.events[name].append(value)
-	
+
 	# 分析开始
 	def parse (self, makefile):
 		self.reset()
@@ -2105,7 +2105,7 @@ class iparser (object):
 		self.out = self.coremake.outname(self.out, self.mode)
 		self._update_obj_names()
 		return 0
-	
+
 	# 取得相对路径
 	def pathrel (self, name, current = ''):
 		if not current:
@@ -2126,7 +2126,7 @@ class iparser (object):
 		if path[:1] == '\'' and path[-1:] == '\'': path = path[1:-1]
 		if path[:1] == '\"' and path[-1:] == '\"': path = path[1:-1]
 		return path.strip(' \r\n\t')
-	
+
 	# 扫描代码中 关键注释的工程信息
 	def _scan_memo (self, filename, prefix = '!'):
 		command = []
@@ -2171,7 +2171,7 @@ class iparser (object):
 				command.append((lineno, n.strip('\r\n').strip(' \t')))
 				lineno += 1
 		return command
-	
+
 	# 扫描主文件
 	def scan_mainfile (self):
 		command = self._scan_memo(self.makefile)
@@ -2205,7 +2205,7 @@ class iparser (object):
 			lineno += 1
 		os.chdir(savedir)
 		return retval
-	
+
 	# 输出错误
 	def error (self, text, fname = '', line = -1):
 		message = ''
@@ -2214,7 +2214,7 @@ class iparser (object):
 		sys.stderr.write(message + text + '\n')
 		sys.stderr.flush()
 		return 0
-	
+
 	# 处理源文件
 	def _process_src (self, textline, fname = '', lineno = -1):
 		ext1 = ('.c', '.cpp', '.cc', '.cxx', '.asm')
@@ -2329,7 +2329,7 @@ class iparser (object):
 					self.error('error: %s: No such directory'%srcname, \
 						fname, lineno)
 					return -1
-				if command == 'inc': 
+				if command == 'inc':
 					self.push_inc(absname)
 				elif command == 'lib':
 					self.push_lib(absname)
@@ -2476,7 +2476,7 @@ class iparser (object):
 			return 0
 		self.error('error: %s: invalid command'%command, fname, lineno)
 		return -1
-	
+
 	# 扫描并确定目标文件
 	def _update_obj_names (self):
 		src2obj = self.coremake.scan(self.src, self.int)
@@ -2484,7 +2484,7 @@ class iparser (object):
 			obj = src2obj[fn]
 			self.srcdict[fn] = os.path.abspath(obj)
 		return 0
-	
+
 	# 设置终端颜色
 	def console (self, color):
 		if not os.isatty(sys.stdout.fileno()):
@@ -2528,19 +2528,19 @@ class iparser (object):
 # dependence: 工程编译，Compile/Link/Build
 #----------------------------------------------------------------------
 class dependence (object):
-	
+
 	def __init__ (self, parser = None):
 		self.parser = parser
 		self.preprocessor = preprocessor()
 		self.reset()
-	
+
 	def reset (self):
 		self._mtime = {}
 		self._dirty = {}
 		self._depinfo = {}
 		self._depname = ''
 		self._outchg = False
-	
+
 	def mtime (self, fname):
 		fname = os.path.abspath(fname)
 		if fname in self._mtime:
@@ -2550,7 +2550,7 @@ class dependence (object):
 		mtime = float('%.6f'%mtime)
 		self._mtime[fname] = mtime
 		return mtime
-	
+
 	def _scan_src (self, srcname):
 		srcname = os.path.abspath(srcname)
 		if not srcname in self.parser:
@@ -2565,7 +2565,7 @@ class dependence (object):
 			name = os.path.abspath(fn)
 			dependence.append((name, self.mtime(name)))
 		return dependence
-	
+
 	def _update_dep (self, srcname):
 		srcname = os.path.abspath(srcname)
 		if not srcname in self.parser:
@@ -2578,7 +2578,7 @@ class dependence (object):
 		objtime = self.mtime(objname)
 		update = False
 		info = self._depinfo.setdefault(srcname, {})
-		if len(info) == 0: 
+		if len(info) == 0:
 			update = True
 		if not update:
 			for fn in info:
@@ -2608,7 +2608,7 @@ class dependence (object):
 				break
 		if debug: print('</dep:%s>\n'%srcname)
 		return retval
-	
+
 	def _load_dep (self):
 		lineno = -1
 		retval = 0
@@ -2655,7 +2655,7 @@ class dependence (object):
 			fp.write(', '.join(part) + '\n')
 		fp.close()
 		return 0
-	
+
 	def process (self):
 		self.reset()
 		parser = self.parser
@@ -2676,7 +2676,7 @@ class dependence (object):
 # emake: 工程编译，Compile/Link/Build
 #----------------------------------------------------------------------
 class emake (object):
-	
+
 	def __init__ (self, ininame = ''):
 		if ininame == '': ininame = 'emake.ini'
 		self.parser = iparser(ininame)
@@ -2686,13 +2686,13 @@ class emake (object):
 		self.unix = self.coremake.unix
 		self.cpus = -1
 		self.loaded = 0
-	
+
 	def reset (self):
 		self.parser.reset()
 		self.coremake.reset()
 		self.dependence.reset()
 		self.loaded = 0
-	
+
 	def open (self, makefile):
 		self.reset()
 		self.config.init()
@@ -2725,7 +2725,7 @@ class emake (object):
 		self.dependence.process()
 		self.loaded = 1
 		return 0
-	
+
 	def _config (self):
 		self.config.replace['makefile'] = self.coremake._main
 		self.config.replace['workspace'] = os.path.dirname(self.coremake._main)
@@ -2765,7 +2765,7 @@ class emake (object):
 		self.config.parameters()
 		#print('replace', self.config.replace)
 		return 0
-	
+
 	def compile (self, printmode = -1):
 		if not self.loaded:
 			return 1
@@ -2786,7 +2786,7 @@ class emake (object):
 		if retval != 0:
 			return 2
 		return 0
-	
+
 	def link (self, printmode = -1):
 		if not self.loaded:
 			return 1
@@ -2807,7 +2807,7 @@ class emake (object):
 			self.coremake.event(self.parser.events.get('postbuild', []))
 			return 0
 		return 3
-	
+
 	def build (self, printmode = -1):
 		if not self.loaded:
 			return 1
@@ -2818,7 +2818,7 @@ class emake (object):
 		if retval != 0:
 			return 3
 		return 0
-	
+
 	def clean (self):
 		if not self.loaded:
 			return 1
@@ -2829,7 +2829,7 @@ class emake (object):
 		if self.loaded:
 			self.coremake.remove(self.parser.out)
 		return 0
-	
+
 	def rebuild (self, printmode = -1):
 		if not self.loaded:
 			return 1
@@ -2850,13 +2850,13 @@ class emake (object):
 			return 9
 		os.system('"%s"'%outname)
 		return 0
-	
+
 	def call (self, cmdline):
 		if not self.loaded:
 			return 1
 		self.coremake.event([cmdline])
 		return 0
-		
+
 	def info (self, name = ''):
 		name = name.lower()
 		if name == '': name = 'out'
@@ -2872,9 +2872,9 @@ class emake (object):
 				if src in self.dependence._dirty:
 					print(src)
 		return 0
-	
 
-		
+
+
 #----------------------------------------------------------------------
 # speed up
 #----------------------------------------------------------------------
@@ -2950,7 +2950,7 @@ def __update_file(name, content):
 	if name in __updated_files:
 		return 0
 	__updated_files[name] = 1
-	try: 
+	try:
 		fp = open(name, 'r')
 		source = fp.read()
 		fp.close()
@@ -2981,7 +2981,7 @@ def getemake():
 		success = True
 		try:
 			content = urllib2.urlopen(url).read()
-		except urllib2.URLError, e:
+		except urllib2.URLError as e:
 			success = False
 			print('failed ')
 			print(e)
@@ -3063,8 +3063,8 @@ def main(argv = None):
 
 	if argv == None:
 		argv = sys.argv
-	
-	argv = [ n for n in argv ] 
+
+	argv = [ n for n in argv ]
 
 	match = '--ini='
 	inipath = ''
@@ -3095,7 +3095,7 @@ def main(argv = None):
 		print('            -u | -update     update itself from github')
 		print('            -h | -help       show help page')
 		return 0
-	
+
 	if os.path.exists(inipath):
 		global INIPATH
 		INIPATH = inipath
@@ -3103,7 +3103,7 @@ def main(argv = None):
 		sys.stderr.write('error: not find %s\n'%inipath)
 		sys.stderr.flush()
 		return -1
-	
+
 	if argv[1] == '--check':
 		make.config.init()
 		make.config.check()
@@ -3145,7 +3145,7 @@ def main(argv = None):
 		args = argv[i].split('=', 1)
 		opt = args[0].lower()
 		num = -1
-		if len(args) > 1: 
+		if len(args) > 1:
 			try: num = int(args[1], 0)
 			except: pass
 		if opt in ('-cpu', '--cpu', '-cpus', '--cpus'):
@@ -3153,8 +3153,8 @@ def main(argv = None):
 		elif opt in ('-print', '--print'):
 			if num >= 0:
 				printmode = num
-	
-	ext = os.path.splitext(name)[-1].lower() 
+
+	ext = os.path.splitext(name)[-1].lower()
 	ft1 = ('.c', '.cpp', '.cxx', '.cc', '.m', '.mm')
 	ft2 = ('.h', '.hpp', '.hxx', '.hh', '.inc')
 	ft3 = ('.mak', '.em', '.emk', '.py', '.pyx')
@@ -3181,7 +3181,7 @@ def main(argv = None):
 			parameters += n + ' '
 		config.cmdtool(envname, exename, parameters)
 		return 0
-	
+
 	if cmd in ('-g', '--g', '-cygwin', '--cygwin'):
 		config = configure()
 		config.init()
@@ -3226,7 +3226,7 @@ def main(argv = None):
 					xp = os.path.join(root, fn)
 					if sys.platform[:3] == 'win':
 						xp = xp.replace('\\', '/')
-					if xp[:2] == './': 
+					if xp[:2] == './':
 						xp = xp[2:]
 					print('src: ' + xp)
 			if 'CVS' in dirs:
@@ -3348,10 +3348,7 @@ if __name__ == '__main__':
 	def test10():
 		sys.argv = [sys.argv[0], '-g', 'default', 'd:/dev/flash/alchemy5/tutorials/01_HelloWorld/hello.exe', '--version']
 		main()
-	
+
 	#test10()
 	sys.exit( main() )
 	#install()
-
-
-
