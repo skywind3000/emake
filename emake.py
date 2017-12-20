@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #======================================================================
 #
-# emake.py - emake version 3.6.7
+# emake.py - emake version 3.6.8
 #
 # history of this file:
 # 2009.08.20   skywind   create this file
@@ -25,6 +25,7 @@
 # 2016.09.01   skywind   new lib composite method
 # 2016.09.02   skywind   more environ variables rather than $(target)
 # 2017.08.16   skywind   new: cflag, cxxflag, sflag, mflag, mmflag
+# 2017.12.20   skywind   new: --abs=1 to tell gcc to print fullpath 
 #
 #======================================================================
 import sys, time, os
@@ -412,6 +413,8 @@ def execute(args, shell = False, capture = False):
 #----------------------------------------------------------------------
 ININAME = ''
 INIPATH = ''
+
+CFG = {'abspath':False, 'verbose':False, 'silent':False}
 
 
 #----------------------------------------------------------------------
@@ -1103,8 +1106,8 @@ class configure(object):
 		#printcmd = True
 		text = ''
 		if printcmd:
-			if not capture: print '>', cmd
-			else: text = '> ' + cmd + '\n'
+			if not capture: print cmd
+			else: text = cmd + '\n'
 		sys.stdout.flush()
 		sys.stderr.flush()
 		text = text + execute(cmd, shell = False, capture = capture)
@@ -1121,7 +1124,11 @@ class configure(object):
 
 	# 编译
 	def compile (self, srcname, objname, cflags, printcmd = False, capture = False):
-		cmd = '-c %s -o %s %s'%(self.pathrel(srcname), self.pathrel(objname), cflags)
+		if CFG['abspath']:
+			srcname = self.pathtext(os.path.abspath(srcname))
+		else:
+			srcname = self.pathrel(srcname)
+		cmd = '-c %s -o %s %s'%(srcname, self.pathrel(objname), cflags)
 		extname = os.path.splitext(srcname)[-1].lower()
 		cond = []
 		if extname in ('.c', '.h'):
@@ -1715,6 +1722,8 @@ class coremake(object):
 				name = self.config.pathrel(srcname)
 				if name[:1] == '"':
 					name = name[1:-1]
+				if CFG['abspath']:
+					name = os.path.abspath(srcname)
 				print name
 			self.config.compile(srcname, objname, options, printcmd)
 			if not os.path.exists(objname):
@@ -1786,9 +1795,11 @@ class coremake(object):
 				name = self.config.pathrel(srcname)
 				if name[:1] == '"':
 					name = name[1:-1]
+				if CFG['abspath']:
+					name = os.path.abspath(srcname)
 				if not self._task_finish:
 					#print '[%d] %s'%(id, name)
-					print name
+					sys.stdout.write(name + '\n')
 			if sys.platform[:3] == 'win':
 				lines = [ x.rstrip('\r\n') for x in output.split('\n') ]
 				output = '\n'.join(lines)
@@ -2765,7 +2776,7 @@ class emake (object):
 		#print 'replace', self.config.replace
 		return 0
 	
-	def compile (self, printmode = -1):
+	def compile (self, printmode = 0):
 		if not self.loaded:
 			return 1
 		dirty = 0
@@ -2781,12 +2792,12 @@ class emake (object):
 		cpus = self.config.cpus
 		if self.cpus >= 0:
 			cpus = self.cpus
-		retval = self.coremake.compile(True, self.parser.info, cpus)
+		retval = self.coremake.compile(True, printmode, cpus)
 		if retval != 0:
 			return 2
 		return 0
 	
-	def link (self, printmode = -1):
+	def link (self, printmode = 0):
 		if not self.loaded:
 			return 1
 		update = False
@@ -2801,7 +2812,7 @@ class emake (object):
 		if update:
 			self.coremake.remove(self.parser.out)
 			self.coremake.event(self.parser.events.get('prelink', []))
-		retval = self.coremake.link(True, self.parser.info)
+		retval = self.coremake.link(True, printmode)
 		if retval:
 			self.coremake.event(self.parser.events.get('postbuild', []))
 			return 0
@@ -3017,7 +3028,7 @@ def update():
 	return 0
 
 def help():
-	print "Emake 3.6.7 Aug.16 2017"
+	print "Emake 3.6.8 Dec.20 2017"
 	print "By providing a completely new way to build your projects, Emake"
 	print "is a easy tool which controls the generation of executables and other"
 	print "non-source files of a program from the program's source files. "
@@ -3063,21 +3074,31 @@ def main(argv = None):
 	if argv == None:
 		argv = sys.argv
 	
-	argv = [ n for n in argv ] 
+	args = argv
+	argv = argv[:1]
+	options = {}
 
-	match = '--ini='
+	for arg in args[1:]:
+		if arg[:2] != '--':
+			argv.append(arg)
+			continue
+		key = arg[2:].strip('\r\n\t ')
+		val = None
+		p1 = key.find('=')
+		if p1 >= 0:
+			val = key[p1 + 1:].strip('\r\n\t')
+			key = key[:p1].strip('\r\n\t')
+		options[key] = val
+
 	inipath = ''
 
-	for i in xrange(len(argv)):
-		if argv[i][:len(match)] == match:
-			inipath = argv[i][len(match):].strip()
-			if '~' in inipath:
-				inipath = os.path.expanduser(inipath)
-			inipath = os.path.abspath(inipath)
-			argv.pop(i)
-			break
+	if options.get('ini', None) is not None:
+		inipath = options['ini']
+		if '~' in inipath:
+			inipath = os.path.expanduser(inipath)
+		inipath = os.path.abspath(inipath)
 
-	if len(argv) == 1:
+	if len(argv) <= 1:
 		version = '(emake 3.6.7 Aug.16 2017 %s)'%sys.platform
 		print 'usage: "emake.py [option] srcfile" %s'%version
 		print 'options  :  -b | -build      build project'
@@ -3103,7 +3124,7 @@ def main(argv = None):
 		sys.stderr.flush()
 		return -1
 	
-	if argv[1] == '--check':
+	if argv[1] == '-check':
 		make.config.init()
 		make.config.check()
 		dirhome = make.config.dirhome
@@ -3117,18 +3138,19 @@ def main(argv = None):
 
 	if len(argv) == 2:
 		name = argv[1].strip(' ')
-		if name in ('-i', '--i', '-install', '--install'):
+		if name in ('-i', '-install', '-install'):
 			install()
 			return 0
-		if name in ('-u', '--u', '-update', '--update'):
+		if name in ('-u', '-update', '-update'):
 			update()
 			return 0
-		if name in ('-h', '--h', '-help', '--help'):
+		if name in ('-h', '-help', '-help'):
 			help()
 			return 0
+
 	if len(argv) <= 3:
-		if name in ('-d', '-d', '--d', '-cmdline', '--cmdline'):
-			print 'usage: emake.py --cmdline envname exename [parameters]'
+		if name in ('-d', '-cmdline'):
+			print 'usage: emake.py -cmdline envname exename [parameters]'
 			print 'call the cmdline tool in the given environment:'
 			print '- envname is a section name in emake.ini which defines environ for this tool'
 			print '- exename is the tool\'s executable file name'
@@ -3140,25 +3162,36 @@ def main(argv = None):
 
 	printmode = 3
 
-	for i in xrange(3, len(argv)):
-		args = argv[i].split('=', 1)
-		opt = args[0].lower()
-		num = -1
-		if len(args) > 1: 
-			try: num = int(args[1], 0)
-			except: pass
-		if opt in ('-cpu', '--cpu', '-cpus', '--cpus'):
-			make.cpus = num
-		elif opt in ('-print', '--print'):
-			if num >= 0:
-				printmode = num
-	
+	def int_safe(text, defval):
+		num = defval
+		try: num = int(text)
+		except: pass
+		return num
+
+	def bool_safe(text, defval):
+		if text is None:
+			return True
+		if text.lower() in ('true', '1', 'yes'):
+			return True
+		if text.lower() in ('0', 'false', 'no'):
+			return False
+		return defval
+
+	if 'cpu' in options:
+		make.cpus = int_safe(options['cpu'], 1)
+
+	if 'print' in options:
+		printmode = int_safe(options['print'], 3)
+
+	if 'abs' in options:
+		CFG['abspath'] = bool_safe(options['abs'], True)
+
 	ext = os.path.splitext(name)[-1].lower() 
 	ft1 = ('.c', '.cpp', '.cxx', '.cc', '.m', '.mm')
 	ft2 = ('.h', '.hpp', '.hxx', '.hh', '.inc')
 	ft3 = ('.mak', '.em', '.emk', '.py', '.pyx')
 
-	if cmd in ('-d', '-d', '--d', '-cmdline', '--cmdline', '-m', '--m'):
+	if cmd in ('-d', '-cmdline', '-cmdline', '-m'):
 		config = configure()
 		config.init()
 		argv += ['', '', '', '', '']
@@ -3166,7 +3199,7 @@ def main(argv = None):
 		exename = argv[3]
 		parameters = ''
 		for n in [ argv[i] for i in xrange(4, len(argv)) ]:
-			if cmd in ('-m', '--m'):
+			if cmd in ('-m',):
 				if n[:2] == '${' and n[-1:] == '}':
 					n = extract(n)
 					if not n: continue
@@ -3181,7 +3214,7 @@ def main(argv = None):
 		config.cmdtool(envname, exename, parameters)
 		return 0
 	
-	if cmd in ('-g', '--g', '-cygwin', '--cygwin'):
+	if cmd in ('-g', '-cygwin'):
 		config = configure()
 		config.init()
 		if not config.cygwin:
@@ -3197,7 +3230,7 @@ def main(argv = None):
 		config.cygwin_execute(envname, exename, parameters)
 		return 0
 
-	if cmd in ('-s', '--s', '-cshell', '--cshell'):
+	if cmd in ('-s', '-cshell'):
 		config = configure()
 		config.init()
 		if not config.cygwin:
@@ -3214,7 +3247,7 @@ def main(argv = None):
 		config.cygwin_execute(envname, '', cmds)
 		return 0
 
-	if cmd == '--dump':
+	if cmd == '-dump':
 		if not name: name = '.'
 		if not os.path.exists(name):
 			print 'can not read: %s'%name
@@ -3243,34 +3276,34 @@ def main(argv = None):
 
 	retval = 0
 
-	if cmd in ('b', '-b', '--b', 'build', '-build', '--build'):
+	if cmd in ('b', '-b', 'build', '-build'):
 		make.open(name)
 		retval = make.build(printmode)
-	elif cmd in ('c', '-c', '--c', 'compile', '-compile', '--compile'):
+	elif cmd in ('c', '-c', 'compile', '-compile'):
 		make.open(name)
 		retval = make.compile(printmode)
-	elif cmd in ('l', '-l', '--l', 'link', '-link', '--link'):
+	elif cmd in ('l', '-l', 'link', '-link'):
 		make.open(name)
 		retval = make.link(printmode)
-	elif cmd in ('clean', '-clean', '--clean'):
+	elif cmd in ('clean', '-clean'):
 		make.open(name)
 		retval = make.clean()
-	elif cmd in ('r', '-r', '--r', 'rebuild', '-rebuild', '--rebuild'):
+	elif cmd in ('r', '-r', 'rebuild', '-rebuild'):
 		make.open(name)
 		retval = make.rebuild(printmode)
-	elif cmd in ('e', '-e', '--e', 'execute', '-execute', '--execute'):
+	elif cmd in ('e', '-e', 'execute', '-execute'):
 		make.open(name)
 		retval = make.execute()
-	elif cmd in ('a', '-a', '--a', 'call', '-call', '--call'):
+	elif cmd in ('a', '-a', 'call', '-call'):
 		make.open(name)
 		retval = make.call(' '.join(argv[3:]))
-	elif cmd in ('o', '-o', '--o', 'out', '-out', '--out'):
+	elif cmd in ('o', '-o', 'out', '-out'):
 		make.open(name)
 		make.info('outname');
-	elif cmd in ('dirty', '-dirty', '--dirty'):
+	elif cmd in ('dirty', '-dirty'):
 		make.open(name)
 		make.info('dirty')
-	elif cmd in ('list', '-list', '--list'):
+	elif cmd in ('list', '-list'):
 		make.open(name)
 		make.info('list')
 	elif cmd in ('home', '-home'):
