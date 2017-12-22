@@ -789,7 +789,10 @@ class configure(object):
 		if not start:
 			start = os.getcwd()
 		if 'relpath' in os.path.__dict__:
-			return os.path.relpath(name, start)
+			try:
+				return os.path.relpath(name, start)
+			except:
+				pass
 		current = start.replace('\\', '/')
 		if len(current) > 0:
 			if current[-1] != '/':
