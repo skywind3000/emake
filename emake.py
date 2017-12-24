@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #======================================================================
 #
-# emake.py - emake version 3.6.8
+# emake.py - emake version 3.6.9
 #
 # history of this file:
 # 2009.08.20   skywind   create this file
@@ -1800,9 +1800,7 @@ class coremake(object):
 					name = name[1:-1]
 				if CFG['abspath']:
 					name = os.path.abspath(srcname)
-				if not self._task_finish:
-					#print '[%d] %s'%(id, name)
-					sys.stdout.write(name + '\n')
+				sys.stdout.write(name + '\n')
 			if sys.platform[:3] == 'win':
 				lines = [ x.rstrip('\r\n') for x in output.split('\n') ]
 				output = '\n'.join(lines)
@@ -3031,7 +3029,7 @@ def update():
 	return 0
 
 def help():
-	print "Emake 3.6.8 Dec.20 2017"
+	print "Emake 3.6.9 Dec.24 2017"
 	print "By providing a completely new way to build your projects, Emake"
 	print "is a easy tool which controls the generation of executables and other"
 	print "non-source files of a program from the program's source files. "
@@ -3095,6 +3093,12 @@ def main(argv = None):
 
 	inipath = ''
 
+	if options.get('cfg', None) is not None:
+		cfg = options['cfg']
+		cfg = os.path.expanduser('~/.config/emake/%s.ini'%cfg)
+		if not 'ini' in options:
+			options['ini'] = cfg
+
 	if options.get('ini', None) is not None:
 		inipath = options['ini']
 		if '~' in inipath:
@@ -3102,7 +3106,7 @@ def main(argv = None):
 		inipath = os.path.abspath(inipath)
 
 	if len(argv) <= 1:
-		version = '(emake 3.6.8 Dec.21 2017 %s)'%sys.platform
+		version = '(emake 3.6.9 Dec.21 2017 %s)'%sys.platform
 		print 'usage: "emake.py [option] srcfile" %s'%version
 		print 'options  :  -b | -build      build project'
 		print '            -c | -compile    compile project'
@@ -3162,6 +3166,10 @@ def main(argv = None):
 	if len(argv) >= 3:
 		cmd = argv[1].strip(' ').lower()
 		name = argv[2]
+	else:
+		if name[:1] == '-':
+			print 'not enough parameter: %s'%name
+			return 0
 
 	printmode = 3
 
