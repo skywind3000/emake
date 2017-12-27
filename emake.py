@@ -2819,7 +2819,7 @@ class emake (object):
 			return 0
 		return 3
 	
-	def build (self, printmode = -1):
+	def build (self, printmode = 0):
 		if not self.loaded:
 			return 1
 		retval = self.compile(printmode)
