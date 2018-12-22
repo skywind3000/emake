@@ -156,7 +156,7 @@ src: main.c
 
 ```
 
-## Documentation
+## Document
 
 emake 的工程文件里面支持下面几种设置：
 
@@ -235,7 +235,7 @@ mode: [exe|lib|dll|win]
 指定目标文件的文件名：
 
 ```make
-mode: target_file_name
+out: target_file_name
 ```
 
 ### int
