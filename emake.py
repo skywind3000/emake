@@ -3182,9 +3182,9 @@ def main(argv = None):
 	def bool_safe(text, defval):
 		if text is None:
 			return True
-		if text.lower() in ('true', '1', 'yes'):
+		if text.lower() in ('true', '1', 'yes', 't'):
 			return True
-		if text.lower() in ('0', 'false', 'no'):
+		if text.lower() in ('0', 'false', 'no', 'n'):
 			return False
 		return defval
 
@@ -3194,9 +3194,14 @@ def main(argv = None):
 	if 'print' in options:
 		printmode = int_safe(options['print'], 3)
 
+	printenv = os.environ.get('EMAKEPRINT', '')
+
+	if printenv:
+		printmode = int_safe(printenv, 3)
+
 	if 'abs' in options:
 		CFG['abspath'] = bool_safe(options['abs'], True)
-
+	
 	ext = os.path.splitext(name)[-1].lower() 
 	ft1 = ('.c', '.cpp', '.cxx', '.cc', '.m', '.mm')
 	ft2 = ('.h', '.hpp', '.hxx', '.hh', '.inc')
