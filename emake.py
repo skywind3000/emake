@@ -29,9 +29,13 @@
 # 2022.04.03   changning new: update to Python3 
 #
 #======================================================================
-import sys, time, os, io
-import configparser
-
+import sys, time, os
+if sys.version_info.major == 2:
+	import ConfigParser as configparser
+	import cStringIO as cio 
+else:
+	import configparser
+	import io as cio
 
 #----------------------------------------------------------------------
 # preprocessor: C/C++/Java 预处理器
@@ -47,7 +51,7 @@ class preprocessor(object):
 		content = text
 		spaces = (' ', '\n', '\t', '\r')
 		
-		srctext = io.StringIO()
+		srctext = cio.StringIO()
 		srctext.write(text)
 		srctext.seek(0)
 		memo = 0
@@ -196,7 +200,7 @@ class preprocessor(object):
 		headers = []
 		filename = os.path.abspath(filename)
 		
-		outtext = io.StringIO()
+		outtext = cio.StringIO()
 		if not os.path.exists(filename):
 			sys.stderr.write('can not open %s\n'%(filename))
 			return outtext.getvalue()
