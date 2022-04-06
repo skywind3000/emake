@@ -1,4 +1,4 @@
-#! /usr/bin/env python2
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 #======================================================================
 #
@@ -25,12 +25,17 @@
 # 2016.09.01   skywind   new lib composite method
 # 2016.09.02   skywind   more environ variables rather than $(target)
 # 2017.08.16   skywind   new: cflag, cxxflag, sflag, mflag, mmflag
-# 2017.12.20   skywind   new: --abs=1 to tell gcc to print fullpath 
+# 2017.12.20   skywind   new: --abs=1 to tell gcc to print fullpath
+# 2022.04.03   changning new: update to Python3 
 #
 #======================================================================
 import sys, time, os
-import ConfigParser
-
+if sys.version_info.major == 2:
+	import ConfigParser as configparser
+	import cStringIO as cio 
+else:
+	import configparser
+	import io as cio
 
 #----------------------------------------------------------------------
 # preprocessor: C/C++/Java 预处理器
@@ -45,8 +50,8 @@ class preprocessor(object):
 	def preprocess (self, text):
 		content = text
 		spaces = (' ', '\n', '\t', '\r')
-		import cStringIO
-		srctext = cStringIO.StringIO()
+		
+		srctext = cio.StringIO()
 		srctext.write(text)
 		srctext.seek(0)
 		memo = 0
@@ -172,9 +177,9 @@ class preprocessor(object):
 			offset4 = srctext.find('\"', offset3 + 1, endup)
 			if offset4 < 0: continue
 
-			check_range = [ i for i in xrange(start, offset1) ]
-			check_range += [ i for i in xrange(offset1 + 1, offset2) ]
-			check_range += [ i for i in xrange(offset2 + 7, offset3) ]
+			check_range = [ i for i in range(start, offset1) ]
+			check_range += [ i for i in range(offset1 + 1, offset2) ]
+			check_range += [ i for i in range(offset2 + 7, offset3) ]
 			check = 1
 
 			for i in check_range:
@@ -194,8 +199,8 @@ class preprocessor(object):
 	def parse_source(self, filename, history_headers, lost_headers):
 		headers = []
 		filename = os.path.abspath(filename)
-		import cStringIO
-		outtext = cStringIO.StringIO()
+		
+		outtext = cio.StringIO()
 		if not os.path.exists(filename):
 			sys.stderr.write('can not open %s\n'%(filename))
 			return outtext.getvalue()
@@ -251,14 +256,14 @@ class preprocessor(object):
 				endup = sized
 			empty = 1
 			memod = 0
-			for i in xrange(start, endup):
+			for i in range(start, endup):
 				if not (srctext[i] in space):
 					empty = 0
 				if srctext[i] == '`':
 					memod = 1
 			if empty and memod:
 				continue
-			for i in xrange(start, endup):
+			for i in range(start, endup):
 				if srctext[i] != '`':
 					outtext = outtext + content[i]
 			outtext = outtext + '\n'
@@ -434,7 +439,7 @@ class configure(object):
 		self.dirhome = ''
 		self.target = ''
 		self.config = {}
-		self.cp = ConfigParser.ConfigParser()
+		self.cp = configparser.ConfigParser()
 		self.unix = 1
 		self.xlink = 1
 		self.searchdirs = None
@@ -533,7 +538,7 @@ class configure(object):
 		if d >= 20: return text
 		names = {}
 		index = 0
-		# print 'expanding', item
+		# print('expanding', item)
 		while 1:
 			index = text.find('$(', index)
 			if index < 0: break
@@ -551,7 +556,7 @@ class configure(object):
 				value = ''
 			text = text.replace('$(' + name + ')', value)
 			names[name] = value
-		# print '>', text
+		# print('>', text)
 		return text
 	
 	# 取得短文件名
@@ -581,7 +586,7 @@ class configure(object):
 	
 	# 读取ini文件
 	def _readini (self, inipath):
-		self.cp = ConfigParser.ConfigParser()
+		self.cp = configparser.ConfigParser()
 		if self.unix and '~' in inipath:
 			inipath = os.path.expanduser(inipath)
 		if os.path.exists(inipath):
@@ -869,7 +874,7 @@ class configure(object):
 			link = '-l%s'%link.replace(' ', '_')
 		if not link in self.link:
 			self.link[link] = len(self.link)
-		#print 'push: ' + link
+		#print('push: ' + link)
 		return 0
 	
 	# 添加预定义
@@ -1109,7 +1114,7 @@ class configure(object):
 		#printcmd = True
 		text = ''
 		if printcmd:
-			if not capture: print cmd
+			if not capture: print(cmd)
 			else: text = cmd + '\n'
 		sys.stdout.flush()
 		sys.stderr.flush()
@@ -1231,7 +1236,7 @@ class configure(object):
 				name = os.path.split(fn)[-1]
 				part = os.path.splitext(name)
 				last = None
-				for i in xrange(1000):
+				for i in range(1000):
 					newname = (i > 0) and (part[0] + '_%d'%i + part[1]) or name
 					if not newname in names:
 						last = newname
@@ -1264,7 +1269,7 @@ class configure(object):
 		path = hr
 		cmd = '%s %s'%(path, parameters)
 		if printcmd:
-			print '>', cmd
+			print('>', cmd)
 		sys.stdout.flush()
 		sys.stderr.flush()
 		os.system(cmd)
@@ -1331,9 +1336,9 @@ class configure(object):
 		else:
 			cmds += '%s\n'%parameters
 		if 0:
-			print '-' * 72
-			print cmds
-			print '-' * 72
+			print('-' * 72)
+			print(cmds)
+			print('-' * 72)
 		os.environ['EMAKECYGWIN'] = '1'
 		return self.cygwin_bash(cmds, capture)
 
@@ -1459,7 +1464,7 @@ class configure(object):
 				pp = os.path.join(pp, '../')
 				return os.path.abspath(pp)
 		if self.unix:
-			for i in xrange(20, 4, -1):
+			for i in range(20, 4, -1):
 				n = '/usr/local/openjdk%d'%i
 				if os.path.exists(os.path.join(n, 'include/jni.h')):
 					return os.path.abspath(n)
@@ -1711,7 +1716,7 @@ class coremake(object):
 	# 单核编译：skipexist(是否需要跳过已有的obj文件)
 	def _compile_single (self, skipexist, printmode, printcmd):
 		retval = 0
-		for i in xrange(len(self._src)):
+		for i in range(len(self._src)):
 			srcname = self._src[i]
 			objname = self._obj[i]
 			options = self._opt[i]
@@ -1727,7 +1732,7 @@ class coremake(object):
 					name = name[1:-1]
 				if CFG['abspath']:
 					name = os.path.abspath(srcname)
-				print name
+				print(name)
 			self.config.compile(srcname, objname, options, printcmd)
 			if not os.path.exists(objname):
 				retval = -1
@@ -1746,7 +1751,7 @@ class coremake(object):
 		self._task_queue = ctasks
 		self._task_thread = []
 		self._task_error = ''
-		for n in xrange(cpus):
+		for n in range(cpus):
 			parameters = (skipexist, printmode, printcmd, cpus - 1 - n)
 			th = threading.Thread(target = self._compile_working_thread, args = parameters)
 			self._task_thread.append(th)
@@ -1818,14 +1823,14 @@ class coremake(object):
 		if printmode & 4:
 			printcmd = True
 		if printmode & 2:
-			print 'compiling ...'
+			print('compiling ...')
 		t = time.time()
 		if cpus <= 1:
 			retval = self._compile_single(skipexist, printmode, printcmd)
 		else:
 			retval = self._compile_threading(skipexist, printmode, printcmd, cpus)
 		t = time.time() - t
-		#print 'time', t
+		#print('time', t)
 		return retval
 	
 	# 连接：(是否跳过已有的文件)
@@ -1836,7 +1841,7 @@ class coremake(object):
 		if printmode & 4:
 			printcmd = True
 		if printmode & 2:
-			print 'linking ...'
+			print('linking ...')
 		output = self._out
 		if skipexist and os.path.exists(output):
 			return output
@@ -2141,12 +2146,12 @@ class iparser (object):
 	# 扫描代码中 关键注释的工程信息
 	def _scan_memo (self, filename, prefix = '!'):
 		command = []
-		content = open(filename, 'U').read()
+		content = open(filename).read()
 		srctext = self.preprocessor.preprocess(content)
-		srcline = [ 0 for i in xrange(len(srctext)) ]
+		srcline = [ 0 for i in range(len(srctext)) ]
 		length = len(srctext)
 		lineno = 1
-		for i in xrange(len(srctext)):
+		for i in range(len(srctext)):
 			srcline[i] = lineno
 			if srctext[i] == '\n':
 				lineno += 1
@@ -2204,7 +2209,7 @@ class iparser (object):
 		ext = os.path.splitext(self.makefile)[1].lower()
 		lineno = 1
 		retval = 0
-		for text in open(self.makefile, 'U'):
+		for text in open(self.makefile):
 			if ext in ('.pyx', '.py'):
 				text = text.strip('\r\n\t ')
 				if text[:3] != '##!':
@@ -2287,7 +2292,7 @@ class iparser (object):
 					match = True
 					break
 			if not match:
-				#print '"%s" not in %s'%(condition, self.config.name)
+				#print('"%s" not in %s'%(condition, self.config.name))
 				return 0
 		environ = {}
 		environ['target'] = self.config.target
@@ -2453,7 +2458,7 @@ class iparser (object):
 				self.push_exp(name, fname, lineno)
 			return 0
 		if command == 'echo':
-			print body
+			print(body)
 			return 0
 		if command == 'color':
 			self.console(int(body.strip('\r\n\t '), 0))
@@ -2583,7 +2588,7 @@ class dependence (object):
 			return -1
 		retval = 0
 		debug = 0
-		if debug: print '\n<dep:%s>'%srcname
+		if debug: print('\n<dep:%s>'%srcname)
 		objname = self.parser[srcname]
 		srctime = self.mtime(srcname)
 		objtime = self.mtime(objname)
@@ -2600,7 +2605,7 @@ class dependence (object):
 				newtime = self.mtime(fn)
 				if newtime > oldtime:
 					update = True
-					#print '%f %f %f'%(newtime, oldtime, newtime - oldtime)
+					#print('%f %f %f'%(newtime, oldtime, newtime - oldtime))
 					break
 		if update:
 			dependence = self._scan_src(srcname)
@@ -2617,14 +2622,14 @@ class dependence (object):
 				self._dirty[srcname] = 1
 				retval = 1
 				break
-		if debug: print '</dep:%s>\n'%srcname
+		if debug: print('</dep:%s>\n'%srcname)
 		return retval
 	
 	def _load_dep (self):
 		lineno = -1
 		retval = 0
 		if os.path.exists(self._depname):
-			for line in open(self._depname, 'U'):
+			for line in open(self._depname):
 				line = line.strip(' \t\r\n')
 				if not line: continue
 				pos = line.find('=')
@@ -2636,7 +2641,7 @@ class dependence (object):
 				count = len(item) / 2
 				info = {}
 				self._depinfo[src] = info
-				for i in xrange(count):
+				for i in range(count):
 					fname = item[i * 2 + 0].strip(' \r\n\t')
 					mtime = item[i * 2 + 1].strip(' \r\n\t')
 					fname = self.parser.pathconf(fname)
@@ -2652,13 +2657,13 @@ class dependence (object):
 			self.parser.coremake.mkdir(path)
 		fp = open(self._depname, 'w')
 		names = self._depinfo.keys()
-		names.sort()
+		sorted(names)
 		for src in names:
 			info = self._depinfo[src]
 			fp.write('%s = '%(src))
 			part = []
 			keys = info.keys()
-			keys.sort()
+			sorted(keys)
 			for fname in keys:
 				mtime = info[fname]
 				if ' ' in fname: fname = '"%s"'%fname
@@ -2679,7 +2684,7 @@ class dependence (object):
 		self._save_dep()
 		for info in self._depinfo:
 			dirty = (info in self._dirty) and 1 or 0
-			#print info, '=', dirty
+			#print(info, '=', dirty)
 		return 0
 
 
@@ -2717,7 +2722,7 @@ class emake (object):
 			return -1
 		parser = self.parser
 		self.coremake.init(makefile, parser.out, parser.mode, parser.int)
-		#print 'open', parser.out, parser.mode, parser.int
+		#print('open', parser.out, parser.mode, parser.int)
 		for src in self.parser:
 			obj = self.parser[src]
 			opt = self.parser.optdict[src]
@@ -2748,22 +2753,22 @@ class emake (object):
 			self.config.loadcfg(name, True)
 		for inc in self.parser.inc:
 			self.config.push_inc(inc)
-			#print 'inc', inc
+			#print('inc', inc)
 		for lib in self.parser.lib:
 			self.config.push_lib(lib)
-			#print 'lib', lib
+			#print('lib', lib)
 		for flag in self.parser.flag:
 			self.config.push_flag(flag)
-			#print 'flag', flag
+			#print('flag', flag)
 		for link in self.parser.link:
 			self.config.push_link(link)
-			#print 'link', link
+			#print('link', link)
 		for pdef in self.parser.define:
 			self.config.push_pdef(pdef)
-			#print 'pdef', pdef
+			#print('pdef', pdef)
 		for flnk in self.parser.flnk:
 			self.config.push_flnk(flnk)
-			#print 'flnk', flnk
+			#print('flnk', flnk)
 		for wlnk in self.parser.wlnk:
 			self.config.push_wlnk(wlnk)
 		for cond in self.parser.cond:
@@ -2774,7 +2779,7 @@ class emake (object):
 		for name, fname, lineno in self.parser.exp:
 			self.coremake.dllwrap(name)
 		self.config.parameters()
-		#print 'replace', self.config.replace
+		#print('replace', self.config.replace)
 		return 0
 	
 	def compile (self, printmode = 0):
@@ -2872,16 +2877,16 @@ class emake (object):
 		name = name.lower()
 		if name == '': name = 'out'
 		if name in ('out', 'outname'):
-			print self.parser.out
+			print(self.parser.out)
 		elif name in ('home', 'base'):
-			print self.parser.home
+			print(self.parser.home)
 		elif name in ('list'):
 			for src in self.parser:
-				print src
+				print(src)
 		elif name in ('dirty', 'changed'):
 			for src in self.parser:
 				if src in self.dependence._dirty:
-					print src
+					print(src)
 		return 0
 	
 
@@ -2896,7 +2901,7 @@ def _psyco_speedup():
 		psyco.bind(configure)
 		psyco.bind(coremake)
 		psyco.bind(emake)
-		#print 'full optimaze'
+		#print('full optimaze')
 	except:
 		return False
 	return True
@@ -2909,35 +2914,35 @@ def _psyco_speedup():
 def install():
 	filepath = os.path.abspath(sys.argv[0])
 	if not os.path.exists(filepath):
-		print 'error: cannot open "%s"'%filepath
+		print('error: cannot open "%s"'%filepath)
 		return -1
 	if sys.platform[:3] == 'win':
-		print 'error: install must under unix'
+		print('error: install must under unix')
 		return -2
 	try:
 		f1 = open(filepath, 'r')
 	except:
-		print 'error: cannot read "%s"'%filepath
+		print('error: cannot read "%s"'%filepath)
 		return -3
 	content = f1.read()
 	f1.close()
 	name2 = '/usr/local/bin/emake.py'
 	name3 = '/usr/local/bin/emake'
 	if os.path.exists(name2):
-		print '/usr/local/bin/emake.py already exists, you should delete it'
+		print('/usr/local/bin/emake.py already exists, you should delete it')
 		return -6
 	if os.path.exists(name3):
-		print '/usr/local/bin/emake already exists, you should delete it'
+		print('/usr/local/bin/emake already exists, you should delete it')
 		return -7
 	try:
 		f2 = open(name2, 'w')
 	except:
-		print 'error: cannot write "%s"'%name2
+		print('error: cannot write "%s"'%name2)
 		return -4
 	try:
 		f3 = open(name3, 'w')
 	except:
-		print 'error: cannot write "%s"'%name3
+		print('error: cannot write "%s"'%name3)
 		f2.close()
 		return -5
 	f2.write(content)
@@ -2948,9 +2953,9 @@ def install():
 	os.system('chmod 755 /usr/local/bin/emake')
 	os.system('chown root /usr/local/bin/emake.py 2> /dev/null')
 	os.system('chown root /usr/local/bin/emake 2> /dev/null')
-	print 'install completed. you can uninstall by deleting the following two files:'
-	print '/usr/local/bin/emake.py'
-	print '/usr/local/bin/emake'
+	print('install completed. you can uninstall by deleting the following two files:')
+	print('/usr/local/bin/emake.py')
+	print('/usr/local/bin/emake')
 	return 0
 
 __updated_files = {}
@@ -2968,16 +2973,16 @@ def __update_file(name, content):
 	except:
 		source = ''
 	if content == source:
-		print '%s up-to-date'%name
+		print('%s up-to-date'%name)
 		return 0
 	try:
 		fp = open(name, 'w')
 		fp.write(content)
 		fp.close()
 	except:
-		print 'can not write to %s'%name
+		print('can not write to %s'%name)
 		return -1
-	print '%s update succeeded'%name
+	print('%s update succeeded'%name)
 	return 1
 
 def getemake():
@@ -2987,29 +2992,29 @@ def getemake():
 	success = True
 	content = ''
 	for url in (url1, url2):
-		print 'fetching', url, ' ...',
+		print('fetching', url, ' ...',)
 		sys.stdout.flush();
 		success = True
 		try:
 			content = urllib2.urlopen(url).read()
-		except urllib2.URLError, e:
+		except (urllib2.URLError, e):
 			success = False
-			print 'failed '
-			print e
+			print('failed ')
+			print(e)
 		head = content.split('\n')[0].strip('\r\n\t ')
 		if head[:22] != '#! /usr/bin/env python':
 			if success:
-				print 'error'
+				print('error')
 			success = False
 		if success:
-			print 'ok'
+			print('ok')
 			return content
 	return ''
 
 def update():
 	content = getemake()
 	if not content:
-		print 'update failed'
+		print('update failed')
 		return -1
 	name1 = os.path.abspath(sys.argv[0])
 	name2 = '/usr/local/bin/emake.py'
@@ -3025,14 +3030,14 @@ def update():
 	if r2 > 0:
 		os.system('chmod 755 /usr/local/bin/emake')
 		os.system('chown root /usr/local/bin/emake 2> /dev/null')
-	print 'update finished !'
+	print('update finished !')
 	return 0
 
 def help():
-	print "Emake 3.6.9 Dec.24 2017"
-	print "By providing a completely new way to build your projects, Emake"
-	print "is a easy tool which controls the generation of executables and other"
-	print "non-source files of a program from the program's source files. "
+	print("Emake 3.6.9 Dec.24 2017")
+	print("By providing a completely new way to build your projects, Emake")
+	print("is a easy tool which controls the generation of executables and other")
+	print("non-source files of a program from the program's source files. ")
 	return 0
 
 
@@ -3107,20 +3112,20 @@ def main(argv = None):
 
 	if len(argv) <= 1:
 		version = '(emake 3.6.9 Dec.21 2017 %s)'%sys.platform
-		print 'usage: "emake.py [option] srcfile" %s'%version
-		print 'options  :  -b | -build      build project'
-		print '            -c | -compile    compile project'
-		print '            -l | -link       link project'
-		print '            -r | -rebuild    rebuild project'
-		print '            -e | -execute    execute project'
-		print '            -o | -out        show output file name'
-		print '            -d | -cmdline    call cmdline tool in given environ'
+		print('usage: "emake.py [option] srcfile" %s'%version)
+		print('options  :  -b | -build      build project')
+		print('            -c | -compile    compile project')
+		print('            -l | -link       link project')
+		print('            -r | -rebuild    rebuild project')
+		print('            -e | -execute    execute project')
+		print('            -o | -out        show output file name')
+		print('            -d | -cmdline    call cmdline tool in given environ')
 		if sys.platform[:3] == 'win':
-			print '            -g | -cygwin     cygwin execute'
-			print '            -s | -cshell     cygwin shell'
-		print '            -i | -install    install emake on unix'
-		print '            -u | -update     update itself from github'
-		print '            -h | -help       show help page'
+			print('            -g | -cygwin     cygwin execute')
+			print('            -s | -cshell     cygwin shell')
+		print('            -i | -install    install emake on unix')
+		print('            -u | -update     update itself from github')
+		print('            -h | -help       show help page')
 		return 0
 	
 	if os.path.exists(inipath):
@@ -3135,10 +3140,10 @@ def main(argv = None):
 		make.config.init()
 		make.config.check()
 		dirhome = make.config.dirhome
-		print 'home:', dirhome
-		print 'gcc:', os.path.join(dirhome, make.config.exename['gcc'])
-		print 'name:', make.config.name.keys()
-		print 'target:', make.config.target
+		print('home:', dirhome)
+		print('gcc:', os.path.join(dirhome, make.config.exename['gcc']))
+		print('name:', make.config.name.keys())
+		print('target:', make.config.target)
 		return 0
 
 	cmd, name = 'build', ''
@@ -3157,10 +3162,10 @@ def main(argv = None):
 
 	if len(argv) <= 3:
 		if name in ('-d', '-cmdline'):
-			print 'usage: emake.py -cmdline envname exename [parameters]'
-			print 'call the cmdline tool in the given environment:'
-			print '- envname is a section name in emake.ini which defines environ for this tool'
-			print '- exename is the tool\'s executable file name'
+			print('usage: emake.py -cmdline envname exename [parameters]')
+			print('call the cmdline tool in the given environment:')
+			print('- envname is a section name in emake.ini which defines environ for this tool')
+			print('- exename is the tool\'s executable file name')
 			return 0
 
 	if len(argv) >= 3:
@@ -3168,7 +3173,7 @@ def main(argv = None):
 		name = argv[2]
 	else:
 		if name[:1] == '-':
-			print 'not enough parameter: %s'%name
+			print('not enough parameter: %s'%name)
 			return 0
 
 	printmode = 3
@@ -3214,7 +3219,7 @@ def main(argv = None):
 		envname = argv[2]
 		exename = argv[3]
 		parameters = ''
-		for n in [ argv[i] for i in xrange(4, len(argv)) ]:
+		for n in [ argv[i] for i in range(4, len(argv)) ]:
 			if cmd in ('-m',):
 				if n[:2] == '${' and n[-1:] == '}':
 					n = extract(n)
@@ -3234,13 +3239,13 @@ def main(argv = None):
 		config = configure()
 		config.init()
 		if not config.cygwin:
-			print 'not find "cygwin" in "default" sect of %s'%config.ininame
+			print('not find "cygwin" in "default" sect of %s'%config.ininame)
 			sys.exit()
 		argv += ['', '', '', '', '']
 		envname = argv[2]
 		exename = argv[3]
 		parameters = ''
-		for n in [ argv[i] for i in xrange(4, len(argv)) ]:
+		for n in [ argv[i] for i in range(4, len(argv)) ]:
 			if ' ' in n: n = '"' + n + '"'
 			parameters += n + ' '
 		config.cygwin_execute(envname, exename, parameters)
@@ -3250,13 +3255,13 @@ def main(argv = None):
 		config = configure()
 		config.init()
 		if not config.cygwin:
-			print 'not find "cygwin" in "default" sect of %s'%config.ininame
+			print('not find "cygwin" in "default" sect of %s'%config.ininame)
 			sys.exit()
 		argv += ['', '', '', '', '']
 		envname = argv[2]
 		exename = argv[3]
 		parameters = ''
-		for n in [ argv[i] for i in xrange(4, len(argv)) ]:
+		for n in [ argv[i] for i in range(4, len(argv)) ]:
 			if ' ' in n: n = '"' + n + '"'
 			parameters += n + ' '
 		cmds = '"%s" %s'%(exename, parameters)
@@ -3266,7 +3271,7 @@ def main(argv = None):
 	if cmd == '-dump':
 		if not name: name = '.'
 		if not os.path.exists(name):
-			print 'can not read: %s'%name
+			print('can not read: %s'%name)
 			return -1
 		for root, dirs, files in os.walk(name):
 			for fn in files:
@@ -3276,7 +3281,7 @@ def main(argv = None):
 						xp = xp.replace('\\', '/')
 					if xp[:2] == './': 
 						xp = xp[2:]
-					print 'src: ' + xp
+					print('src: ' + xp)
 			if 'CVS' in dirs:
 				dirs.remove('CVS')  # don't visit CVS directories
 			if '.svn' in dirs:
@@ -3347,13 +3352,13 @@ if __name__ == '__main__':
 		make.push('malloc/mod2.c')
 		make.push('malloc/mod3.c')
 		make.build(printmode = 7)
-		print os.path.getmtime('malloc/main.c')
+		print(os.path.getmtime('malloc/main.c'))
 	def test2():
 		pst = preprocessor()
 		head, lost, text = pst.dependence('voice/fastvoice/basewave.cpp')
-		for n in head: print n
-		pp = pst.preprocess(file('voice/fastvoice/basewave.cpp', 'U').read())
-		print pp
+		for n in head: print(n)
+		pp = pst.preprocess(file('voice/fastvoice/basewave.cpp').read())
+		print(pp)
 	def test3():
 		parser = iparser()
 		parser._pragma_scan('malloc/main.c')
@@ -3361,10 +3366,10 @@ if __name__ == '__main__':
 		parser = iparser()
 		cmaker = coremake()
 		parser.parse('malloc/main.c')
-		print '"%s", "%s", "%s"'%(parser.out, parser.int, parser.mode)
-		print parser.home, parser.name
+		print('"%s", "%s", "%s"'%(parser.out, parser.int, parser.mode))
+		print(parser.home, parser.name)
 		for n in parser:
-			print 'src:', n, '->', cmaker.objname(n, ''), parser[n]
+			print('src:', n, '->', cmaker.objname(n, ''), parser[n])
 	def test5():
 		parser = iparser()
 		parser.parse('malloc/main.c')
@@ -3378,11 +3383,11 @@ if __name__ == '__main__':
 	def test7():
 		config = configure()
 		config.init()
-		print config.checklib('liblinwei.a')
-		print config.checklib('winmm')
-		print config.checklib('pixia')
+		print(config.checklib('liblinwei.a'))
+		print(config.checklib('winmm'))
+		print(config.checklib('pixia'))
 		config.push_lib('d:/dev/local/lib')
-		print config.checklib('pixia')
+		print(config.checklib('pixia'))
 	def test8():
 		sys.argv = [sys.argv[0], '-d', 'msvc', 'cl.exe', '-help' ]
 		sys.argv = [sys.argv[0], '-r', 'd:/acm/aprcode/pixellib/PixelBitmap.cpp' ]
