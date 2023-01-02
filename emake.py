@@ -3,7 +3,7 @@
 #  vim: set ts=4 sw=4 tw=0 et :
 #======================================================================
 #
-# emake.py - emake version 3.6.9
+# emake.py - emake version 3.6.10
 #
 # history of this file:
 # 2009.08.20   skywind   create this file
@@ -42,6 +42,7 @@ if sys.version_info.major == 2:
 else:
     import configparser
     import io as cio
+    unicode = str
 
 
 #----------------------------------------------------------------------
@@ -500,6 +501,41 @@ class posix (object):
                     config[sect][key] = val
         return config
 
+    @staticmethod
+    def decode_string (text, encoding = None):
+        hr = ''
+        if sys.version_info[0] >= 3:
+            if isinstance(text, str):
+                return text
+        else:
+            if isinstance(text, unicode):
+                return text
+        if encoding is not None:
+            return text.decode(encoding, errors = 'ignore')
+        guess = [sys.getdefaultencoding(), 'utf-8']
+        if sys.stdout and sys.stdout.encoding:
+            guess.append(sys.stdout.encoding)
+        try:
+            import locale
+            guess.append(locale.getpreferredencoding())
+        except:
+            pass
+        guess.reverse()
+        guess += ['gbk', 'ascii', 'latin1']
+        visit = {}
+        for name in guess:
+            if name in visit:
+                continue
+            visit[name] = 1
+            try:
+                hr = text.decode(name)
+                return hr
+                break
+            except:
+                pass
+        hr = text.decode('utf-8', errors = 'ignore')
+        return hr
+
 
 #----------------------------------------------------------------------
 # Default CFG File
@@ -948,7 +984,7 @@ class configure(object):
     
     # 添加参数
     def push_flag (self, flag):
-        if not flag in self.flag:
+        if flag not in self.flag:
             self.flag[flag] = len(self.flag)
         return 0
     
@@ -958,7 +994,7 @@ class configure(object):
             link = self.pathtext(self.path(link))
         else:
             link = '-l%s'%link.replace(' ', '_')
-        if not link in self.link:
+        if link not in self.link:
             self.link[link] = len(self.link)
         #print('push: ' + link)
         return 0
@@ -969,20 +1005,20 @@ class configure(object):
     
     # 添加连接参数
     def push_flnk (self, flnk):
-        if not flnk in self.flnk:
+        if flnk not in self.flnk:
             self.flnk[flnk] = len(self.flnk)
         return 0
     
     # 添加链接传递
     def push_wlnk (self, wlnk):
-        if not wlnk in self.wlnk:
+        if wlnk not in self.wlnk:
             self.wlnk[wlnk] = len(self.wlnk)
         return 0
 
     # 添加条件参数
     def push_cond (self, flag, condition):
         key = (flag, condition)
-        if not key in self.cond:
+        if key not in self.cond:
             self.cond[key] = len(self.cond)
         return 0
 
@@ -1038,7 +1074,7 @@ class configure(object):
     def loadcfg (self, sect = 'default', reset = True):
         self.init()
         if reset: self.reset()
-        f1 = lambda n: (n[:1] != '\'' or n[-1:] != '\'') and n
+        # f1 = lambda n: (n[:1] != '\'' or n[-1:] != '\'') and n
         config = lambda n: self._getitem(sect, n, '')
         for path in config('include').replace(';', ',').split(','):
             path = self.pathconf(path)
@@ -1131,7 +1167,7 @@ class configure(object):
 
     # gcc 的search-dirs
     def __searchdirs (self):
-        if self.searchdirs != None:
+        if self.searchdirs is not None:
             return self.searchdirs
         path = os.path.abspath(os.path.join(self.dirhome, 'bin/gcc'))
         if not self.unix:
@@ -1157,7 +1193,7 @@ class configure(object):
         dict = {}
         for n in part:
             path = os.path.abspath(os.path.normpath(n))
-            if not path in dict:
+            if path not in dict:
                 if os.path.exists(path):
                     data.append(path)
                     dict[path] = 1
@@ -1204,7 +1240,11 @@ class configure(object):
             else: text = cmd + '\n'
         sys.stdout.flush()
         sys.stderr.flush()
-        text = text + execute(cmd, shell = False, capture = capture)
+        output = execute(cmd, shell = False, capture = capture)
+        if sys.version_info[0] >= 3:
+            if isinstance(output, bytes):
+                output = posix.decode_string(output)
+        text = text + output
         return text
     
     # 调用 gcc
@@ -1297,7 +1337,7 @@ class configure(object):
         output = os.path.abspath(output)
         libname = []
         for name in [ os.path.abspath(n) for n in objs ]:
-            if not name in libname:
+            if name not in libname:
                 libname.append(name)
         outpath = os.path.join(temp, 'out')
         srcpath = os.path.join(temp, 'src')
@@ -1324,7 +1364,7 @@ class configure(object):
                 last = None
                 for i in range(1000):
                     newname = (i > 0) and (part[0] + '_%d'%i + part[1]) or name
-                    if not newname in names:
+                    if newname not in names:
                         last = newname
                         break
                 if last and os.path.exists(fn):
@@ -1365,7 +1405,7 @@ class configure(object):
             os.environ[n] = v
             envflag[n] = True
         for n in os.environ:
-            if not n in envflag:
+            if n not in envflag:
                 remove.append(n)
         for n in remove:
             del os.environ[n]
@@ -1379,8 +1419,8 @@ class configure(object):
         if 'Popen' in subprocess.__dict__:
             args = [ bashpath, '--login' ]
             outmode = capture and subprocess.PIPE or None
-            p = subprocess.Popen(args, shell = False, \
-                stdin = subprocess.PIPE, stdout = outmode, \
+            p = subprocess.Popen(args, shell = False, 
+                stdin = subprocess.PIPE, stdout = outmode, 
                 stderr = subprocess.STDOUT)
             stdin, stdouterr = (p.stdin, p.stdout)
             stdin.write(cmds + '\nexit\n')
@@ -1410,7 +1450,7 @@ class configure(object):
     def cygwin_execute (self, sect, exename, parameters = '', capture = 0):
         capture = capture and True or False
         sect = sect.lower()
-        home = self.win2cyg(os.getcwd())
+        home = self.win2cyg(os.getcwd())  # noqa: F841
         cmds = 'export LANG=C\n'
         if sect in self.config:
             for n in self.config[sect]:
@@ -1630,7 +1670,7 @@ class coremake(object):
         
     # 初始化：设置工程名字，类型，以及中间文件的目录
     def init (self, main, out = 'a.out', mode = 'exe', intermediate = ''):
-        if not mode in ('exe', 'win', 'dll', 'lib'):
+        if mode not in ('exe', 'win', 'dll', 'lib'):
             raise Exception("mode must in ('exe', 'win', 'dll', 'lib')")
         self.reset()
         self.config.init()
@@ -1694,7 +1734,7 @@ class coremake(object):
                 index = 1
                 while True:
                     name = '%s%d%s'%(p1, index, p2)
-                    if not name in obj2src:
+                    if name not in obj2src:
                         obj = name
                         break
                     index += 1
@@ -1766,7 +1806,7 @@ class coremake(object):
     def _dllparam (self):
         defname = self._export.get('def', '')
         libname = self._export.get('lib', '')
-        msvclib = self._export.get('msvc', '')
+        msvclib = self._export.get('msvc', '')  # noqa: F841
         hidden = self._export.get('hide', 0)
         if (not defname) and (not libname):
             return ''
@@ -1781,9 +1821,9 @@ class coremake(object):
     # DLL 编译完成后的事情
     def _dllpost (self):
         defname = self._export.get('def', '')
-        libname = self._export.get('lib', '')
+        libname = self._export.get('lib', '')   # noqa: F841
         msvclib = self._export.get('msvc', '')
-        dllname = self._out
+        dllname = self._out   # noqa: F841
         if not msvclib:
             return 0
         if not os.path.exists(defname):
@@ -1883,7 +1923,7 @@ class coremake(object):
                 self._task_retval = -1
                 self._task_finish = True
                 mutex.release()
-                result = False
+                result = False   # noqa: F841
             mutex.acquire()
             if printmode & 1:
                 name = self.config.pathrel(srcname)
@@ -1922,7 +1962,7 @@ class coremake(object):
     # 连接：(是否跳过已有的文件)
     def link (self, skipexist = False, printmode = 0):
         self.config.check()
-        retval = 0
+        retval = 0   # noqa: F841
         printcmd = False
         if printmode & 4:
             printcmd = True
@@ -1994,7 +2034,7 @@ class coremake(object):
             if os.environ.get(k) != v: 
                 os.environ[k] = v
         for k in os.environ.keys():
-            if not k in envsave: 
+            if k not in envsave: 
                 del os.environ[k]
         return True
     
@@ -2168,7 +2208,7 @@ class iparser (object):
     
     # 添加编译事件
     def push_event (self, name, value):
-        if not name in self.events:
+        if name not in self.events:
             self.events[name] = []
         self.events[name].append(value)
     
@@ -2336,7 +2376,7 @@ class iparser (object):
             srcname = self.pathconf(name)
             if not srcname:
                 continue
-            if (not '*' in srcname) and (not '?' in srcname):
+            if ('*' not in srcname) and ('?' not in srcname):
                 names = [ srcname ]
             else:
                 import glob
@@ -2344,12 +2384,12 @@ class iparser (object):
             for srcname in names:
                 absname = os.path.abspath(srcname)
                 if not os.path.exists(absname):
-                    self.error('error: %s: No such file'%srcname, \
+                    self.error('error: %s: No such file'%srcname, 
                         fname, lineno)
                     return -1
                 extname = os.path.splitext(absname)[1].lower()
-                if (not extname in ext1) and (not extname in ext2):
-                    self.error('error: %s: Unknow file type'%absname, \
+                if (extname not in ext1) and (extname not in ext2):
+                    self.error('error: %s: Unknow file type'%absname, 
                         fname, lineno)
                     return -2
                 self.push_src(absname, options)
@@ -2408,8 +2448,8 @@ class iparser (object):
             return retval
         if command in ('mode', 'mod'):
             body = body.lower().strip(' \r\n\t')
-            if not body in ('exe', 'win', 'lib', 'dll'):
-                self.error('error: %s: mode is not supported'%body, \
+            if body not in ('exe', 'win', 'lib', 'dll'):
+                self.error('error: %s: mode is not supported'%body, 
                     fname, lineno)
                 return -1
             self.mode = body
@@ -2428,7 +2468,7 @@ class iparser (object):
                     continue
                 absname = os.path.abspath(srcname)
                 if not os.path.exists(absname):
-                    self.error('error: %s: No such directory'%srcname, \
+                    self.error('error: %s: No such directory'%srcname, 
                         fname, lineno)
                     return -1
                 if command == 'inc': 
@@ -2442,7 +2482,7 @@ class iparser (object):
                 if not srcname:
                     continue
                 if srcname[:2] in ('-o', '-I', '-B', '-L'):
-                    self.error('error: %s: invalid option'%srcname, \
+                    self.error('error: %s: invalid option'%srcname, 
                         fname, lineno)
                 self.push_flag(srcname)
             return 0
@@ -2467,7 +2507,7 @@ class iparser (object):
                     if not flag:
                         continue
                     if flag[:2] in ('-o', '-I', '-B', '-L'):
-                        self.error('error: %s: invalid option'%flag, \
+                        self.error('error: %s: invalid option'%flag, 
                                 fname, lineno)
                     self.push_cond(flag, cond)
                 return 0
@@ -2493,7 +2533,7 @@ class iparser (object):
                 except: info = 3
                 self.info = info
             return 0
-        if command in ('cexe', 'clib', 'cdll' ,'cwin', 'exe', 'dll', 'win'):
+        if command in ('cexe', 'clib', 'cdll', 'cwin', 'exe', 'dll', 'win'):
             if not self.int:
                 self.int = os.path.abspath(os.path.join('objs', self.config.target))
             self.mode = command[-3:]
@@ -2551,6 +2591,10 @@ class iparser (object):
             return 0
         if command in ('prebuild', 'prelink', 'postbuild'):
             self.push_event(command, body)
+            return 0
+        if command in ('preload'):
+            self.coremake._main = self.makefile
+            self.coremake.event([body])
             return 0
         if command == 'environ':
             for name in body.replace(';', ',').split(','):
@@ -2655,11 +2699,11 @@ class dependence (object):
     
     def _scan_src (self, srcname):
         srcname = os.path.abspath(srcname)
-        if not srcname in self.parser:
+        if srcname not in self.parser:
             return None
         if not os.path.exists(srcname):
             return None
-        objname = self.parser[srcname]
+        objname = self.parser[srcname]  # noqa: F841
         head, lost, src = self.preprocessor.dependence(srcname)
         filelist = [srcname] + head
         dependence = []
@@ -2670,13 +2714,13 @@ class dependence (object):
     
     def _update_dep (self, srcname):
         srcname = os.path.abspath(srcname)
-        if not srcname in self.parser:
+        if srcname not in self.parser:
             return -1
         retval = 0
         debug = 0
         if debug: print('\n<dep:%s>'%srcname)
         objname = self.parser[srcname]
-        srctime = self.mtime(srcname)
+        srctime = self.mtime(srcname)  # noqa: F841
         objtime = self.mtime(objname)
         update = False
         info = self._depinfo.setdefault(srcname, {})
@@ -2712,7 +2756,7 @@ class dependence (object):
         return retval
     
     def _load_dep (self):
-        lineno = -1
+        lineno = -1  # noqa: F841
         retval = 0
         if os.path.exists(self._depname):
             for line in open(self._depname):
@@ -2724,7 +2768,7 @@ class dependence (object):
                 src = os.path.abspath(src)
                 if not os.path.exists(src): continue
                 item = body.replace(';', ',').split(',')
-                count = len(item) / 2
+                count = int(len(item) / 2)
                 info = {}
                 self._depinfo[src] = info
                 for i in range(count):
@@ -2769,7 +2813,7 @@ class dependence (object):
         self._load_dep()
         self._save_dep()
         for info in self._depinfo:
-            dirty = (info in self._dirty) and 1 or 0
+            dirty = (info in self._dirty) and 1 or 0  # noqa: F841
             #print(info, '=', dirty)
         return 0
 
@@ -2832,8 +2876,8 @@ class emake (object):
         self.config.replace['makefile'] = self.coremake._main
         self.config.replace['workspace'] = os.path.dirname(self.coremake._main)
         for name, fname, lineno in self.parser.imp:
-            if not name in self.config.config:
-                self.parser.error('error: %s: No such config section'%name, \
+            if name not in self.config.config:
+                self.parser.error('error: %s: No such config section'%name, 
                     fname, lineno)
                 return -1
             self.config.loadcfg(name, True)
@@ -2942,7 +2986,7 @@ class emake (object):
         if not self.loaded:
             return 1
         outname = os.path.abspath(self.parser.out)
-        if not self.parser.mode in ('exe', 'win'):
+        if self.parser.mode not in ('exe', 'win'):
             sys.stderr.write('cannot execute: \'%s\'\n'%outname)
             sys.stderr.flush()
             return 8
@@ -3079,11 +3123,11 @@ def getemake():
     content = ''
     for url in (url1, url2):
         print('fetching', url, ' ...',)
-        sys.stdout.flush();
+        sys.stdout.flush()
         success = True
         try:
             content = urllib2.urlopen(url).read()
-        except (urllib2.URLError, e):
+        except urllib2.URLError as e:
             success = False
             print('failed ')
             print(e)
@@ -3120,7 +3164,7 @@ def update():
     return 0
 
 def help():
-    print("Emake 3.6.9 Dec.24 2017")
+    print("Emake 3.6.10 Jan.2 2023")
     print("By providing a completely new way to build your projects, Emake")
     print("is a easy tool which controls the generation of executables and other")
     print("non-source files of a program from the program's source files. ")
@@ -3163,7 +3207,7 @@ def main(argv = None):
     # create main object
     make = emake()
 
-    if argv == None:
+    if argv is None:
         argv = sys.argv
     
     args = argv
@@ -3187,7 +3231,7 @@ def main(argv = None):
     if options.get('cfg', None) is not None:
         cfg = options['cfg']
         cfg = os.path.expanduser('~/.config/emake/%s.ini'%cfg)
-        if not 'ini' in options:
+        if 'ini' not in options:
             options['ini'] = cfg
 
     if options.get('ini', None) is not None:
@@ -3295,7 +3339,7 @@ def main(argv = None):
     
     ext = os.path.splitext(name)[-1].lower() 
     ft1 = ('.c', '.cpp', '.cxx', '.cc', '.m', '.mm')
-    ft2 = ('.h', '.hpp', '.hxx', '.hh', '.inc')
+    ft2 = ('.h', '.hpp', '.hxx', '.hh', '.inc')    # noqa: F841
     ft3 = ('.mak', '.em', '.emk', '.py', '.pyx')
 
     if cmd in ('-d', '-cmdline', '-cmdline', '-m'):
@@ -3429,7 +3473,7 @@ def main(argv = None):
 if __name__ == '__main__':
     def test1():
         make = coremake()
-        name = 'e:/zombie/demo01.c'
+        name = 'e:/zombie/demo01.c'  # noqa: F841
         make.mkdir(r'e:\lab\malloc\obj list')
         make.mkdir(r'e:\lab\malloc\abc c\01 2\3 4\5\6')
         make.init('mainmod', 'exe', 'malloc\obj')
@@ -3443,7 +3487,7 @@ if __name__ == '__main__':
         pst = preprocessor()
         head, lost, text = pst.dependence('voice/fastvoice/basewave.cpp')
         for n in head: print(n)
-        pp = pst.preprocess(file('voice/fastvoice/basewave.cpp').read())
+        pp = pst.preprocess(open('voice/fastvoice/basewave.cpp').read())
         print(pp)
     def test3():
         parser = iparser()
