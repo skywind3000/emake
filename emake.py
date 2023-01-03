@@ -3,7 +3,7 @@
 #  vim: set ts=4 sw=4 tw=0 et :
 #======================================================================
 #
-# emake.py - emake version 3.6.10
+# emake.py - emake version 3.6.11
 #
 # history of this file:
 # 2009.08.20   skywind   create this file
@@ -3242,7 +3242,7 @@ def update():
     return 0
 
 def help():
-    print("Emake 3.6.10 Jan.2 2023")
+    print("Emake 3.6.11 Jan.4 2023")
     print("By providing a completely new way to build your projects, Emake")
     print("is a easy tool which controls the generation of executables and other")
     print("non-source files of a program from the program's source files. ")
