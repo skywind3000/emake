@@ -46,6 +46,13 @@ else:
 
 
 #----------------------------------------------------------------------
+# version info
+#----------------------------------------------------------------------
+EMAKE_VERSION = '3.6.12'
+EMAKE_DATE = 'Jan.4 2023'
+
+
+#----------------------------------------------------------------------
 # preprocessor: C/C++/Java 预处理器
 #----------------------------------------------------------------------
 class preprocessor(object):
@@ -563,6 +570,7 @@ class configure(object):
             ininame = ININAME and ININAME or 'emake.ini'
         self.ininame = ininame
         self.inipath = os.path.join(self.dirpath, self.ininame)
+        self.iniload = ''
         self.haveini = False
         self.dirhome = ''
         self.target = ''
@@ -1406,7 +1414,7 @@ class configure(object):
     def cmdtool (self, sectname, exename, parameters, printcmd = False):
         envsave = [ (n, os.environ[n]) for n in os.environ ]
         hr = self._cmdline_init(sectname, exename)
-        if type(hr) != type(''):
+        if type(hr) != type(''):   # noqa: E721
             if hr == -1:
                 msg = 'cmdtool error: can not find %s env !!'%(sectname)
             else:
@@ -2025,12 +2033,13 @@ class coremake(object):
             environ[k] = v
         environ['EMAKE_SCRIPT'] = os.path.abspath(__file__)
         environ['EMAKE_SCRIPT_PATH'] = os.path.dirname(os.path.abspath(__file__))
-        environ['EMAKE_HOME'] = self.config.dirhome
+        environ['EMAKE_TOOLCHAIN'] = self.config.dirhome
         environ['EMAKE_OUT'] = self._out
         environ['EMAKE_INT'] = self._int
         environ['EMAKE_MAIN'] = self._main
         environ['EMAKE_PATH'] = os.path.dirname(self._main)
         environ['EMAKE_MODE'] = self._mode
+        environ['EMAKE_HOME'] = os.path.dirname(self._main)
         environ['EMAKE_MAIN_NOEXT'] = os.path.splitext(self._main)[0]
         environ['EMAKE_MAIN_EXT'] = os.path.splitext(self._main)[1]
         environ['EMAKE_MAIN_PATH'] = os.path.dirname(self._main)
@@ -2039,6 +2048,13 @@ class coremake(object):
         environ['EMAKE_OUT_PATH'] = os.path.dirname(self._out)
         for name in ('gcc', 'ar', 'ld', 'as', 'nasm', 'yasm', 'dllwrap'):
             environ['EMAKE_BIN_' + name.upper()] = self.config.getname(name)
+        inipath = ''
+        if INIPATH:
+            if os.path.exists(INIPATH):
+                inipath = INIPATH
+        if not inipath:
+            inipath = self.config.iniload
+        environ['EMAKE_CONFIG'] = inipath
         for k, v in environ.items():    # 展开宏
             environ[k] = self.config._expand(environ, envsave, k)
         for k, v in environ.items():
@@ -2864,6 +2880,12 @@ class dependence (object):
             fp.write(', '.join(part) + '\n')
         fp.close()
         return 0
+
+    def __contains__ (self, srcname):
+        return (srcname in self._depinfo)
+
+    def __getitem__ (self, srcname):
+        return self._depinfo[srcname]
     
     def process (self):
         self.reset()
@@ -3095,6 +3117,35 @@ class emake (object):
             for src in self.parser:
                 if src in self.dependence._dirty:
                     print(src)
+        elif name in ('cflags',):
+            for src in self.parser:
+                print('%s: %s'%(src, self.parser.compile_flag(src)))
+        elif name in ('depends', 'dependencies'):
+            for src in self.parser:
+                info = self.dependence[src]
+                head = [ key for key in info ]
+                print('%s: %s'%(src, ', '.join(head)))
+        elif name in ('objs',):
+            for src in self.parser:
+                print('%s: %s'%(src, self.parser[src]))
+        elif name in ('commands', 'command'):
+            cc = self.config.exename.get('gcc', 'gcc')
+            info = []
+            home = self.parser.home
+            for src in self.parser:
+                relname = self.config.pathrel(src, home)
+                outname = self.config.pathrel(self.parser[src], home)
+                cmd = cc + ' ' + self.parser.compile_flag(src) + ' '
+                cmd += '-o ' + self.config.pathtext(outname) + ' '
+                cmd += self.config.pathtext(relname)
+                item = {}
+                item['directory'] = home.replace('\\', '/')
+                item['command'] = cmd
+                item['file'] = self.config.pathrel(src, home).replace('\\', '/')
+                item['output'] = self.config.pathrel(self.parser[src], home)
+                info.append(item)
+            import json
+            print(json.dumps(info, indent = 4))
         return 0
     
 
@@ -3242,10 +3293,41 @@ def update():
     return 0
 
 def help():
-    print("Emake 3.6.12 Jan.4 2023")
-    print("By providing a completely new way to build your projects, Emake")
-    print("is a easy tool which controls the generation of executables and other")
+    version = '(emake %s %s %s)'%(EMAKE_VERSION, EMAKE_DATE, sys.platform)
+    print('usage: "emake.py <action> [options] srcfile" %s'%version)
+    print('')
+    print('actions  :  -b | -build      build project')
+    print('            -c | -compile    compile project')
+    print('            -l | -link       link project')
+    print('            -r | -rebuild    rebuild project')
+    print('            -e | -execute    execute project')
+    print('            -o | -out        show output file name')
+    print('            -d | -cmdline    call cmdline tool in given environ')
+    if sys.platform[:3] == 'win':
+        print('            -g | -cygwin     cygwin execute')
+        print('            -s | -cshell     cygwin shell')
+    print('            -i | -install    install emake on unix')
+    print('            -u | -update     update itself from github')
+    print('            -h | -help       show help page')
+    print('')
+    print('            -home            display project home')
+    print('            -list            display project files')
+    print('            -objs            display obj files')
+    print('            -cflags          display compile flags')
+    print('            -depends         display dependencies')
+    print('            -dirty           display dirty files')
+    print('            -commands        display compile commands json')
+    print('')
+    print('options  :  --cfg={cfg}      load config from ~/.config/emake/{cfg}.ini')
+    print('            --ini={inipath}  load config from {inipath} directly')
+    print('            --print={n}      set verbose level: 0-3')
+    print('            --abs={0|1}      display absolute path in error messages')
+    print('')
+    print("Emake is a easy tool which controls the generation of executables and other")
     print("non-source files of a program from the program's source files. ")
+    print('')
+    print('Homepage: https://github.com/skywind3000/emake')
+    print('')
     return 0
 
 
@@ -3311,6 +3393,11 @@ def main(argv = None):
         cfg = os.path.expanduser('~/.config/emake/%s.ini'%cfg)
         if 'ini' not in options:
             options['ini'] = cfg
+    elif 'EMAKE_CFG' in os.environ:
+        cfg = os.environ['EMAKE_CFG']
+        cfg = str(cfg).strip('\r\n\t ')
+        if ('ini' not in options) and cfg:
+            options['ini'] = cfg
 
     if options.get('ini', None) is not None:
         inipath = options['ini']
@@ -3319,9 +3406,9 @@ def main(argv = None):
         inipath = os.path.abspath(inipath)
 
     if len(argv) <= 1:
-        version = '(emake 3.6.12 Jan.4 2023 %s)'%sys.platform
-        print('usage: "emake.py [option] srcfile" %s'%version)
-        print('options  :  -b | -build      build project')
+        version = '(emake %s %s %s)'%(EMAKE_VERSION, EMAKE_DATE, sys.platform)
+        print('usage: "emake.py <action> [options] srcfile" %s'%version)
+        print('actions  :  -b | -build      build project')
         print('            -c | -compile    compile project')
         print('            -l | -link       link project')
         print('            -r | -rebuild    rebuild project')
@@ -3336,7 +3423,7 @@ def main(argv = None):
         print('            -h | -help       show help page')
         return 0
     
-    if os.path.exists(inipath):
+    if inipath and os.path.exists(inipath):
         global INIPATH
         INIPATH = inipath
     elif inipath:
@@ -3407,7 +3494,7 @@ def main(argv = None):
     if 'print' in options:
         printmode = int_safe(options['print'], 3)
 
-    printenv = os.environ.get('EMAKEPRINT', '')
+    printenv = os.environ.get('EMAKE_PRINT', '')
 
     if printenv:
         printmode = int_safe(printenv, 3)
@@ -3446,7 +3533,7 @@ def main(argv = None):
             parameters += n + ' '
         config.cmdtool(envname, exename, parameters)
         return 0
-    
+
     if cmd in ('-g', '-cygwin'):
         config = configure()
         config.init()
@@ -3542,6 +3629,18 @@ def main(argv = None):
     elif cmd in ('home', '-home'):
         make.open(name)
         make.info('home')
+    elif cmd in ('-objs'):
+        make.open(name)
+        make.info('objs')
+    elif cmd in ('-cflags'):
+        make.open(name)
+        make.info('cflags')
+    elif cmd in ('-depends'):
+        make.open(name)
+        make.info('depends')
+    elif cmd in ('-commands', '-command'):
+        make.open(name)
+        make.info('command')
     else:
         sys.stderr.write('unknow command: %s\n'%cmd)
         sys.stderr.flush()
