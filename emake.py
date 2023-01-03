@@ -3,7 +3,7 @@
 #  vim: set ts=4 sw=4 tw=0 et :
 #======================================================================
 #
-# emake.py - emake version 3.6.11
+# emake.py - emake version 3.6.12
 #
 # history of this file:
 # 2009.08.20   skywind   create this file
@@ -2023,22 +2023,22 @@ class coremake(object):
         environ = {}
         for k, v in self._environ.items():
             environ[k] = v
-        environ['EMAKE'] = os.path.abspath(__file__)
-        environ['EMAKEP'] = os.path.dirname(os.path.abspath(__file__))
-        environ['EMHOME'] = self.config.dirhome
-        environ['EMOUT'] = self._out
-        environ['EMINT'] = self._int
-        environ['EMMAIN'] = self._main
-        environ['EMPATH'] = os.path.dirname(self._main)
-        environ['EMMODE'] = self._mode
-        environ['EMMAINN'] = os.path.splitext(self._main)[0]
-        environ['EMMAINE'] = os.path.splitext(self._main)[1]
-        environ['EMMAINP'] = os.path.dirname(self._main)
-        environ['EMOUTN'] = os.path.splitext(self._out)[0]
-        environ['EMOUTE'] = os.path.splitext(self._out)[1]
-        environ['EMOUTP'] = os.path.dirname(self._out)
+        environ['EMAKE_SCRIPT'] = os.path.abspath(__file__)
+        environ['EMAKE_SCRIPT_PATH'] = os.path.dirname(os.path.abspath(__file__))
+        environ['EMAKE_HOME'] = self.config.dirhome
+        environ['EMAKE_OUT'] = self._out
+        environ['EMAKE_INT'] = self._int
+        environ['EMAKE_MAIN'] = self._main
+        environ['EMAKE_PATH'] = os.path.dirname(self._main)
+        environ['EMAKE_MODE'] = self._mode
+        environ['EMAKE_MAIN_NOEXT'] = os.path.splitext(self._main)[0]
+        environ['EMAKE_MAIN_EXT'] = os.path.splitext(self._main)[1]
+        environ['EMAKE_MAIN_PATH'] = os.path.dirname(self._main)
+        environ['EMAKE_OUT_NOEXT'] = os.path.splitext(self._out)[0]
+        environ['EMAKE_OUT_EXT'] = os.path.splitext(self._out)[1]
+        environ['EMAKE_OUT_PATH'] = os.path.dirname(self._out)
         for name in ('gcc', 'ar', 'ld', 'as', 'nasm', 'yasm', 'dllwrap'):
-            environ['EM' + name.upper()] = self.config.getname(name)
+            environ['EMAKE_BIN_' + name.upper()] = self.config.getname(name)
         for k, v in environ.items():    # 展开宏
             environ[k] = self.config._expand(environ, envsave, k)
         for k, v in environ.items():
@@ -3242,7 +3242,7 @@ def update():
     return 0
 
 def help():
-    print("Emake 3.6.11 Jan.4 2023")
+    print("Emake 3.6.12 Jan.4 2023")
     print("By providing a completely new way to build your projects, Emake")
     print("is a easy tool which controls the generation of executables and other")
     print("non-source files of a program from the program's source files. ")
@@ -3319,7 +3319,7 @@ def main(argv = None):
         inipath = os.path.abspath(inipath)
 
     if len(argv) <= 1:
-        version = '(emake 3.6.11 Jan.4 2023 %s)'%sys.platform
+        version = '(emake 3.6.12 Jan.4 2023 %s)'%sys.platform
         print('usage: "emake.py [option] srcfile" %s'%version)
         print('options  :  -b | -build      build project')
         print('            -c | -compile    compile project')
@@ -3411,6 +3411,10 @@ def main(argv = None):
 
     if printenv:
         printmode = int_safe(printenv, 3)
+
+    if 'EMAKE_ABSPATH' in os.environ:
+        hr = bool_safe(os.environ['EMAKE_ABSPATH'], True)
+        CFG['abspath'] = hr
 
     if 'abs' in options:
         CFG['abspath'] = bool_safe(options['abs'], True)
