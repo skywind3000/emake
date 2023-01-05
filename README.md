@@ -11,10 +11,13 @@ GNU Make 太麻烦？Makefile 写起来太臃肿？头文件依赖生成搞不�
 - 语言支持 `C` / `C++` / `ObjC` / `ObjC++` / `ASM`
 - 工具支持 `gcc` / `mingw` / `clang` 
 - 运行系统 `Windows` / `Linux` / `Mac OS X` / `FreeBSD` 
+- 信息导出：项目文件列表，目标文件，以及 `compile_commands.json` 等。
 - 方便的交叉编译，轻松构建 `Android NDK` / `iOS` / `asm.js` 项目
 - 你见过最简单的构建系统，比 Gnu Make / CMake 都简单很多
 
 只有两三个源代码，那 makefile 随便写，文件一多，搞依赖都可以搞死人。emake 就是简单中的简单，不但比 GNU Make 简单，还要比 cmake 简单很多。
+
+应为 CMake 和 GNU Make 都是**命令式构建工具**，而 emake 是**定义式构建工具**，命令式当然可以处理各种复杂情况，本身就是一门编程语言，强大却失之复杂，而定义式类似 IDE 那样，设定文件，编译参数链接参数，就能开始工作了，虽然做不到命令式那么灵活，却能满足大多数中小型项目开发，个人实验项目开发。
 
 Emake 是为快速开发而生的，最初版本在 2009年发布，多年间团队在不同操作系统下用它构建过：服务端项目、客户端项目、iOS项目、安卓项目 和 Flash项目，这些项目都稳健的跑在生产环境中，为海量用户提供服务。
 
@@ -262,9 +265,32 @@ flag: -Wall, -g, -pg
 
 诸如此类
 
+### Events
+
+根据条件运行不同 shell 命令：
+
+```
+# 加载前
+preload: echo "preload"
+
+# 编译前
+prebuild: echo "prebuild"
+
+# 链接前
+prelink: echo "prelink"
+
+# 编译后
+postbuild: echo "postbuild"
+```
+
+其中 `preload` 和 `prebuild` 之间的区别是，`preload` 每次都会运行，并且是在解析项目文件和分析依赖之前运行，而 `prebuild` 是在解析项目文件分析依赖之后运行，如果二进制没更新，`prebuild` 就不会被调用，而 `preload` 每次都无条件被执行。
+
+比如某个源代码是使用其他工具生成的，放到 `prebuild` 时，应为处于依赖分析之后，初次构建尚未触发生成代码前面依赖分析就会报找不到文件了，但 `preload` 在依赖分析之前运行。
+
+
 ## Settings
 
-Emake 可以指定一个 ini 文件来进行配置：
+Emake 可以指定一个 ini 文件来进行全局配置：
 
 原来是：
 	
@@ -279,6 +305,12 @@ Emake 可以指定一个 ini 文件来进行配置：
 	/etc/emake.ini
 	/usr/local/etc/emake.ini
 	~/.config/emake.ini
+
+两外一种指定配置的方式是 `--cfg=name` 方式：
+
+    emake --cfg=mingw64 <parameters>
+
+这样它会去试图加载 `~/.config/emake/{name}.ini` ，方便你集中管理不同的全局配置文件。
 
 进行寻找。该配置文件确定了一些编译的默认配置，在该配置文件中，可以：
 
@@ -330,7 +362,7 @@ link=stdc++, ole32, gdi32, wsock32, opengl32, gdi32, glu32, ws2_32, uuid, oleaut
 
 ## Cross Compilation
 
-交叉编译的话，需要单独一个 ini文件来规定工具链，比如我的 android交叉编译配置：
+交叉编译的话，需要单独一个 ini 文件来规定工具链，比如我的 android交叉编译配置：
 
 ```ini
 [default]
@@ -344,11 +376,15 @@ cpu=4
 
 ```
 
-其中 home 规定了 ndk工具链 gcc环境所在的可执行路径，后面同时定义了：gcc, ar, as 三个必须的可执行文件名，使用的时候：
+其中 home 规定了 ndk 工具链 gcc 环境所在的可执行路径，可以是绝对路径，或者是相对于 ini 配置文件的相对路径，后面同时定义了：gcc, ar, as 三个必须的可执行文件名，使用的时候：
 
 	emake --ini=d://android-toolchain/android-9/emake.ini xxx
 
-在 default 区中定义了很多 name ，这些 name 可以用来做工程文件的条件判断，比如：
+或者放到 `~/.config/emake/android-9.ini` 里面，用：
+
+    emake --cfg=android-9 xxx
+
+指定使用它，在 default 区中定义了很多 name ，这些 name 可以用来做工程文件的条件判断，比如：
 
 	android/flag: -mfloat-abi=softfp
 	posix/link: pthread
@@ -387,6 +423,40 @@ int main(void)
 来进行编译，emake 会自动提取 `//!` 开头的注释，解析为 emake的项目描述信息，上面的配置描述了该项目依赖的文件（除了 main.cpp自己外），以及项目模式为生成可执行文件。
 
 这样写起来，比所有构建系统都简单很多。
+
+## 输出信息
+
+列出项目最终输出文件，比如 `xxx.so` 之类：
+
+```bash
+emake -o hello.mak
+```
+
+列出项目所包含的源文件：
+
+```bash
+emake -list hello.mak
+```
+
+列出编译参数：
+
+```bash
+emake -cflags hello.mak
+```
+
+列出依赖：
+
+```bash
+emake -depends hello.mak
+```
+
+输出 `compile_commands.json` 内容:
+
+```bash
+emake -commands hello.mak
+```
+
+还有更多信息，具体见：`emake -h` 说明。
 
 ## Credits
 
