@@ -53,6 +53,123 @@ EMAKE_DATE = 'Jan.4 2023'
 
 
 #----------------------------------------------------------------------
+# posix shell tools
+#----------------------------------------------------------------------
+class posix (object):
+
+    @staticmethod
+    def load_file_content (filename, mode = 'r'):
+        if hasattr(filename, 'read'):
+            try: content = filename.read()
+            except: pass
+            return content
+        try:
+            fp = open(filename, mode)
+            content = fp.read()
+            fp.close()
+        except:
+            content = None
+        return content
+
+    # load file and guess encoding
+    @staticmethod
+    def load_file_text (filename, encoding = None):
+        content = posix.load_file_content(filename, 'rb')
+        if content is None:
+            return None
+        if content[:3] == b'\xef\xbb\xbf':
+            text = content[3:].decode('utf-8')
+        elif encoding is not None:
+            text = content.decode(encoding, 'ignore')
+        else:
+            text = None
+            guess = [sys.getdefaultencoding(), 'utf-8']
+            if sys.stdout and sys.stdout.encoding:
+                guess.append(sys.stdout.encoding)
+            try:
+                import locale
+                guess.append(locale.getpreferredencoding())
+            except:
+                pass
+            visit = {}
+            for name in guess + ['gbk', 'ascii', 'latin1']:
+                if name in visit:
+                    continue
+                visit[name] = 1
+                try:
+                    text = content.decode(name)
+                    break
+                except:
+                    pass
+            if text is None:
+                text = content.decode('utf-8', 'ignore')
+        return text
+
+    @staticmethod
+    def load_ini (filename, encoding = None):
+        text = posix.load_file_text(filename, encoding)
+        config = {}
+        sect = 'default'
+        if text is None:
+            return None
+        for line in text.split('\n'):
+            line = line.strip('\r\n\t ')
+            if not line:
+                continue
+            elif line[:1] in ('#', ';'):
+                continue
+            elif line.startswith('['):
+                if line.endswith(']'):
+                    sect = line[1:-1].strip('\r\n\t ')
+                    if sect not in config:
+                        config[sect] = {}
+            else:
+                pos = line.find('=')
+                if pos >= 0:
+                    key = line[:pos].rstrip('\r\n\t ')
+                    val = line[pos + 1:].lstrip('\r\n\t ')
+                    if sect not in config:
+                        config[sect] = {}
+                    config[sect][key] = val
+        return config
+
+    @staticmethod
+    def decode_string (text, encoding = None):
+        hr = ''
+        if sys.version_info[0] >= 3:
+            if isinstance(text, str):
+                return text
+        else:
+            if isinstance(text, unicode):
+                return text
+        if encoding is not None:
+            return text.decode(encoding, errors = 'ignore')
+        guess = [sys.getdefaultencoding(), 'utf-8']
+        if sys.stdout and sys.stdout.encoding:
+            guess.append(sys.stdout.encoding)
+        try:
+            import locale
+            guess.append(locale.getpreferredencoding())
+        except:
+            pass
+        guess.reverse()
+        guess += ['gbk', 'ascii', 'latin1']
+        visit = {}
+        for name in guess:
+            if name in visit:
+                continue
+            visit[name] = 1
+            try:
+                hr = text.decode(name)
+                return hr
+                break
+            except:
+                pass
+        hr = text.decode('utf-8', errors = 'ignore')
+        return hr
+
+
+#----------------------------------------------------------------------
 # preprocessor: C/C++/Java 预处理器
 #----------------------------------------------------------------------
 class preprocessor(object):
@@ -162,12 +279,11 @@ class preprocessor(object):
         content = ''
         del heads[:]
         try:
-            fp = open(source, "r")
+            content = posix.load_file_text(source)
         except:
             return ''
         
-        content = '\n'.join([ line.strip('\r\n') for line in fp ])
-        fp.close()
+        content = '\n'.join([ line.strip('\r\n') for line in content.split("\n") ])
 
         srctext = self.preprocess(content)
 
@@ -430,122 +546,6 @@ def execute(args, shell = False, capture = False):
         return b''
     return text
 
-
-#----------------------------------------------------------------------
-# posix shell tools
-#----------------------------------------------------------------------
-class posix (object):
-
-    @staticmethod
-    def load_file_content (filename, mode = 'r'):
-        if hasattr(filename, 'read'):
-            try: content = filename.read()
-            except: pass
-            return content
-        try:
-            fp = open(filename, mode)
-            content = fp.read()
-            fp.close()
-        except:
-            content = None
-        return content
-
-    # load file and guess encoding
-    @staticmethod
-    def load_file_text (filename, encoding = None):
-        content = posix.load_file_content(filename, 'rb')
-        if content is None:
-            return None
-        if content[:3] == b'\xef\xbb\xbf':
-            text = content[3:].decode('utf-8')
-        elif encoding is not None:
-            text = content.decode(encoding, 'ignore')
-        else:
-            text = None
-            guess = [sys.getdefaultencoding(), 'utf-8']
-            if sys.stdout and sys.stdout.encoding:
-                guess.append(sys.stdout.encoding)
-            try:
-                import locale
-                guess.append(locale.getpreferredencoding())
-            except:
-                pass
-            visit = {}
-            for name in guess + ['gbk', 'ascii', 'latin1']:
-                if name in visit:
-                    continue
-                visit[name] = 1
-                try:
-                    text = content.decode(name)
-                    break
-                except:
-                    pass
-            if text is None:
-                text = content.decode('utf-8', 'ignore')
-        return text
-
-    @staticmethod
-    def load_ini (filename, encoding = None):
-        text = posix.load_file_text(filename, encoding)
-        config = {}
-        sect = 'default'
-        if text is None:
-            return None
-        for line in text.split('\n'):
-            line = line.strip('\r\n\t ')
-            if not line:
-                continue
-            elif line[:1] in ('#', ';'):
-                continue
-            elif line.startswith('['):
-                if line.endswith(']'):
-                    sect = line[1:-1].strip('\r\n\t ')
-                    if sect not in config:
-                        config[sect] = {}
-            else:
-                pos = line.find('=')
-                if pos >= 0:
-                    key = line[:pos].rstrip('\r\n\t ')
-                    val = line[pos + 1:].lstrip('\r\n\t ')
-                    if sect not in config:
-                        config[sect] = {}
-                    config[sect][key] = val
-        return config
-
-    @staticmethod
-    def decode_string (text, encoding = None):
-        hr = ''
-        if sys.version_info[0] >= 3:
-            if isinstance(text, str):
-                return text
-        else:
-            if isinstance(text, unicode):
-                return text
-        if encoding is not None:
-            return text.decode(encoding, errors = 'ignore')
-        guess = [sys.getdefaultencoding(), 'utf-8']
-        if sys.stdout and sys.stdout.encoding:
-            guess.append(sys.stdout.encoding)
-        try:
-            import locale
-            guess.append(locale.getpreferredencoding())
-        except:
-            pass
-        guess.reverse()
-        guess += ['gbk', 'ascii', 'latin1']
-        visit = {}
-        for name in guess:
-            if name in visit:
-                continue
-            visit[name] = 1
-            try:
-                hr = text.decode(name)
-                return hr
-                break
-            except:
-                pass
-        hr = text.decode('utf-8', errors = 'ignore')
-        return hr
 
 
 #----------------------------------------------------------------------
@@ -2311,7 +2311,7 @@ class iparser (object):
     # 扫描代码中 关键注释的工程信息
     def _scan_memo (self, filename, prefix = '!'):
         command = []
-        content = open(filename).read()
+        content = posix.load_file_text(filename)
         srctext = self.preprocessor.preprocess(content)
         srcline = [ 0 for i in range(len(srctext)) ]
         length = len(srctext)
