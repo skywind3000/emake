@@ -3,7 +3,7 @@
 #  vim: set ts=4 sw=4 tw=0 et :
 #======================================================================
 #
-# emake.py - emake version 3.6.12
+# emake.py - emake version 3.6.13
 #
 # history of this file:
 # 2009.08.20   skywind   create this file
@@ -48,8 +48,8 @@ else:
 #----------------------------------------------------------------------
 # version info
 #----------------------------------------------------------------------
-EMAKE_VERSION = '3.6.12'
-EMAKE_DATE = 'Jan.4 2023'
+EMAKE_VERSION = '3.6.13'
+EMAKE_DATE = 'Sep.13 2023'
 
 
 #----------------------------------------------------------------------
@@ -2135,6 +2135,7 @@ class iparser (object):
         self.flnkdict = {}
         self.wlnkdict = {}
         self.conddict = {}
+        self.profile = ''
         self.makefile = ''
     
     # 取得文件的目标文件名称
@@ -2473,6 +2474,7 @@ class iparser (object):
         environ['mode'] = self.mode
         environ['home'] = os.path.dirname(os.path.abspath(fname))
         environ['bin'] = self.config.dirhome
+        environ['profile'] = self.profile and self.profile or 'none'
         for name in ('gcc', 'ar', 'ld', 'as', 'nasm', 'yasm', 'dllwrap'):
             if name in self.config.exename:
                 data = self.config.exename[name]
@@ -2487,7 +2489,14 @@ class iparser (object):
             self.out = os.path.abspath(self.pathconf(body))
             return 0
         if command in ('int', 'intermediate'):
-            self.int = os.path.abspath(self.pathconf(body))
+            body = body.strip('\r\n\t ')
+            if body in ('<auto>', '$(auto)', '!', '?', '*'):
+                dirname = self.config.target
+                if self.profile != '':
+                    dirname += '-' + self.profile
+                self.int = os.path.abspath(os.path.join('objs', dirname))
+            else:
+                self.int = os.path.abspath(self.pathconf(body))
             return 0
         if command in ('src', 'source'):
             retval = self._process_src(body, fname, lineno)
@@ -2579,9 +2588,21 @@ class iparser (object):
                 except: info = 3
                 self.info = info
             return 0
+        if command == 'profile':
+            body = body.strip(' \r\n\t')
+            self.profile = body
+            if body == 'debug':
+                self.push_define('_DEBUG', '1')
+                self.push_flag('-g')
+            elif body == 'release':
+                self.push_flag('-O2')
+            return 0
         if command in ('cexe', 'clib', 'cdll', 'cwin', 'exe', 'dll', 'win'):
             if not self.int:
-                self.int = os.path.abspath(os.path.join('objs', self.config.target))
+                dirname = self.config.target
+                if self.profile != '':
+                    dirname += '-' + self.profile
+                self.int = os.path.abspath(os.path.join('objs', dirname))
             self.mode = command[-3:]
             retval = self._process_src(body, fname, lineno)
             return retval
