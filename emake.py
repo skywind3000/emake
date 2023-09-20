@@ -3,7 +3,7 @@
 #  vim: set ts=4 sw=4 tw=0 et :
 #======================================================================
 #
-# emake.py - emake version 3.6.13
+# emake.py - emake version 3.6.14
 #
 # history of this file:
 # 2009.08.20   skywind   create this file
@@ -28,6 +28,7 @@
 # 2017.08.16   skywind   new: cflag, cxxflag, sflag, mflag, mmflag
 # 2017.12.20   skywind   new: --abs=1 to tell gcc to print fullpath
 # 2022.04.03   changning new: update to Python3 
+# 2023.09.20   skywind   new: --profile=debug/release options
 #
 #======================================================================
 from __future__ import unicode_literals, print_function
@@ -48,8 +49,8 @@ else:
 #----------------------------------------------------------------------
 # version info
 #----------------------------------------------------------------------
-EMAKE_VERSION = '3.6.13'
-EMAKE_DATE = 'Sep.13 2023'
+EMAKE_VERSION = '3.6.14'
+EMAKE_DATE = 'Sep.20 2023'
 
 
 #----------------------------------------------------------------------
@@ -2253,9 +2254,11 @@ class iparser (object):
         self.events[name].append(value)
     
     # 分析开始
-    def parse (self, makefile):
+    def parse (self, makefile, profile = None):
         self.reset()
         self.config.init()
+        if profile:
+            self.profile = profile
         makefile = os.path.abspath(makefile)
         self.makefile = makefile
         part = os.path.split(makefile)
@@ -2464,6 +2467,9 @@ class iparser (object):
                 if cond in self.config.name:
                     match = True
                     break
+                elif cond.startswith('$') and cond[1:] == self.profile:
+                    match = True
+                    break
             if not match:
                 #print('"%s" not in %s'%(condition, self.config.name))
                 return 0
@@ -2587,15 +2593,6 @@ class iparser (object):
                 try: info = int(body)
                 except: info = 3
                 self.info = info
-            return 0
-        if command == 'profile':
-            body = body.strip(' \r\n\t')
-            self.profile = body
-            if body == 'debug':
-                self.push_define('_DEBUG', '1')
-                self.push_flag('-g')
-            elif body == 'release':
-                self.push_flag('-O2')
             return 0
         if command in ('cexe', 'clib', 'cdll', 'cwin', 'exe', 'dll', 'win'):
             if not self.int:
@@ -2947,7 +2944,7 @@ class emake (object):
         self.loaded = 0
         self.error_checked = None
     
-    def open (self, makefile):
+    def open (self, makefile, profile = None):
         self.reset()
         self.config.init()
         environ = {}
@@ -2955,7 +2952,7 @@ class emake (object):
         if 'environ' in cfg:
             for k, v in cfg['environ'].items():
                 environ[k.upper()] = v
-        retval = self.parser.parse(makefile)
+        retval = self.parser.parse(makefile, profile)
         if retval != 0:
             return -1
         parser = self.parser
@@ -3341,6 +3338,7 @@ def help():
     print('')
     print('options  :  --cfg={cfg}      load config from ~/.config/emake/{cfg}.ini')
     print('            --ini={inipath}  load config from {inipath} directly')
+    print('            --profile={name} set profile to {name}')
     print('            --print={n}      set verbose level: 0-3')
     print('            --abs={0|1}      display absolute path in error messages')
     print('')
@@ -3617,50 +3615,55 @@ def main(argv = None):
 
     retval = 0
 
+    profile = os.environ.get('EMAKE_PROFILE', '')
+
+    if not profile:
+        profile = options.get('profile', '')
+
     if cmd in ('b', '-b', 'build', '-build'):
-        make.open(name)
+        make.open(name, profile)
         retval = make.build(printmode)
     elif cmd in ('c', '-c', 'compile', '-compile'):
-        make.open(name)
+        make.open(name, profile)
         retval = make.compile(printmode)
     elif cmd in ('l', '-l', 'link', '-link'):
-        make.open(name)
+        make.open(name, profile)
         retval = make.link(printmode)
     elif cmd in ('clean', '-clean'):
-        make.open(name)
+        make.open(name, profile)
         retval = make.clean()
     elif cmd in ('r', '-r', 'rebuild', '-rebuild'):
-        make.open(name)
+        make.open(name, profile)
         retval = make.rebuild(printmode)
     elif cmd in ('e', '-e', 'execute', '-execute'):
-        make.open(name)
+        make.open(name, profile)
         retval = make.execute()
     elif cmd in ('a', '-a', 'call', '-call'):
-        make.open(name)
+        make.open(name, profile)
         retval = make.call(' '.join(argv[3:]))
     elif cmd in ('o', '-o', 'out', '-out'):
-        make.open(name)
+        make.open(name, profile)
         make.info('outname') 
     elif cmd in ('dirty', '-dirty'):
-        make.open(name)
+        make.open(name, profile)
         make.info('dirty')
     elif cmd in ('list', '-list'):
-        make.open(name)
+        make.open(name, profile)
         make.info('list')
     elif cmd in ('home', '-home'):
-        make.open(name)
+        make.open(name, profile)
         make.info('home')
     elif cmd in ('-objs'):
-        make.open(name)
+        make.open(name, profile)
         make.info('objs')
     elif cmd in ('-cflags'):
-        make.open(name)
+        make.open(name, profile)
         make.info('cflags')
     elif cmd in ('-depends'):
-        make.open(name)
+        make.open(name, profile)
         make.info('depends')
     elif cmd in ('-commands', '-command'):
-        make.open(name)
+        make.open(name, profile)
         make.info('command')
     else:
         sys.stderr.write('unknow command: %s\n'%cmd)
