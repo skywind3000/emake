@@ -3,7 +3,7 @@
 #  vim: set ts=4 sw=4 tw=0 et :
 #======================================================================
 #
-# emake.py - emake version 3.6.14
+# emake.py - emake version 3.6.15
 #
 # history of this file:
 # 2009.08.20   skywind   create this file
@@ -29,6 +29,7 @@
 # 2017.12.20   skywind   new: --abs=1 to tell gcc to print fullpath
 # 2022.04.03   changning new: update to Python3 
 # 2023.09.20   skywind   new: --profile=debug/release options
+# 2023.10.08   skywind   new: try "flag@debug: -g"
 #
 #======================================================================
 from __future__ import unicode_literals, print_function
@@ -49,8 +50,8 @@ else:
 #----------------------------------------------------------------------
 # version info
 #----------------------------------------------------------------------
-EMAKE_VERSION = '3.6.14'
-EMAKE_DATE = 'Sep.20 2023'
+EMAKE_VERSION = '3.6.15'
+EMAKE_DATE = 'Oct.10 2023'
 
 
 #----------------------------------------------------------------------
@@ -600,18 +601,19 @@ class configure(object):
         ext = ('.c', '.cpp', '.c', '.cc', '.cxx', '.s', '.asm', '.m', '.mm')
         self.extnames = ext
         self.__jdk_home = None
+        self.profile = None
         self.reset()
     
     # 配置信息复位
     def reset (self):
-        self.inc = {}       # include路径
-        self.lib = {}       # lib 路径
-        self.flag = {}      # 编译参数
-        self.pdef = {}      # 预定义宏
-        self.link = {}      # 连接库
-        self.flnk = {}      # 连接参数
-        self.wlnk = {}      # 连接传递
-        self.cond = {}      # 条件参数
+        self.inc = {}         # include路径
+        self.lib = {}         # lib 路径
+        self.flag = {}        # 编译参数
+        self.pdef = {}        # 预定义宏
+        self.link = {}        # 连接库
+        self.flnk = {}        # 连接参数
+        self.wlnk = {}        # 连接传递
+        self.cond = {}        # 条件参数
         self.param_build = ''
         self.param_compile = ''
         return 0
@@ -890,6 +892,7 @@ class configure(object):
         self.replace['inihome'] = os.path.dirname(self.iniload)
         self.replace['inipath'] = self.inipath
         self.replace['target'] = self.target
+        self.replace['profile'] = self.profile
         self.inited = True
         return 0
 
@@ -1083,12 +1086,23 @@ class configure(object):
         if path[:1] == '\"' and path[-1:] == '\"': path = path[1:-1]
         return path.strip(' \r\n\t')
 
+    # _getitem with profile
+    def __get_config (self, section, keyname):
+        value = self._getitem(section, keyname, '')
+        if self.profile:
+            keyopt = '%s@%s'%(keyname, self.profile)
+            valueopt = self._getitem(section, keyopt, '')
+            if valueopt:
+                value += ',' + valueopt
+        return value
+
     # 刷新配置
-    def loadcfg (self, sect = 'default', reset = True):
+    def loadcfg (self, profile, sect = 'default', reset = True):
         self.init()
         if reset: self.reset()
+        self.profile = profile
         # f1 = lambda n: (n[:1] != '\'' or n[-1:] != '\'') and n
-        config = lambda n: self._getitem(sect, n, '')
+        config = lambda n: self.__get_config(sect, n)
         for path in config('include').replace(';', ',').split(','):
             path = self.pathconf(path)
             if not path: continue
@@ -1700,12 +1714,12 @@ class coremake(object):
         self.inited = 0
         
     # 初始化：设置工程名字，类型，以及中间文件的目录
-    def init (self, main, out = 'a.out', mode = 'exe', intermediate = ''):
+    def init (self, main, out = 'a.out', mode = 'exe', intermediate = '', profile = None):
         if mode not in ('exe', 'win', 'dll', 'lib'):
             raise Exception("mode must in ('exe', 'win', 'dll', 'lib')")
         self.reset()
         self.config.init()
-        self.config.loadcfg()
+        self.config.loadcfg(profile)
         self._main = os.path.abspath(main)
         self._mode = mode
         self._out = os.path.abspath(out)
@@ -2378,7 +2392,7 @@ class iparser (object):
         ext = os.path.splitext(self.makefile)[1].lower()
         lineno = 1
         retval = 0
-        for text in open(self.makefile):
+        for text in posix.load_file_text(self.makefile).split('\n'):
             if ext in ('.pyx', '.py'):
                 text = text.strip('\r\n\t ')
                 if text[:3] != '##!':
@@ -2452,6 +2466,7 @@ class iparser (object):
             return 0
         if text[:1] in (';', '#'):      # 跳过注释
             return 0
+        # print('>', text)
         pos = text.find(':')
         if pos < 0:
             self.error('unknow emake command', fname, lineno)
@@ -2467,11 +2482,15 @@ class iparser (object):
                 if cond in self.config.name:
                     match = True
                     break
-                elif cond.startswith('$') and cond[1:] == self.profile:
-                    match = True
-                    break
             if not match:
                 #print('"%s" not in %s'%(condition, self.config.name))
+                return 0
+        pos = command.find('@')
+        if pos >= 0:
+            command, profile = command[:pos].lower(), command[pos + 1:]
+            command = command.strip()
+            profile = profile.strip()
+            if profile and profile != self.profile:
                 return 0
         environ = {}
         environ['target'] = self.config.target
@@ -2498,7 +2517,7 @@ class iparser (object):
             body = body.strip('\r\n\t ')
             if body in ('<auto>', '$(auto)', '!', '?', '*'):
                 dirname = self.config.target
-                if self.profile != '':
+                if self.profile:
                     dirname += '-' + self.profile
                 self.int = os.path.abspath(os.path.join('objs', dirname))
             else:
@@ -2597,7 +2616,7 @@ class iparser (object):
         if command in ('cexe', 'clib', 'cdll', 'cwin', 'exe', 'dll', 'win'):
             if not self.int:
                 dirname = self.config.target
-                if self.profile != '':
+                if self.profile:
                     dirname += '-' + self.profile
                 self.int = os.path.abspath(os.path.join('objs', dirname))
             self.mode = command[-3:]
@@ -2947,6 +2966,7 @@ class emake (object):
     def open (self, makefile, profile = None):
         self.reset()
         self.config.init()
+        self.config.profile = profile
         environ = {}
         cfg = self.config.config
         if 'environ' in cfg:
@@ -2956,7 +2976,7 @@ class emake (object):
         if retval != 0:
             return -1
         parser = self.parser
-        self.coremake.init(makefile, parser.out, parser.mode, parser.int)
+        self.coremake.init(makefile, parser.out, parser.mode, parser.int, profile)
         #print('open', parser.out, parser.mode, parser.int)
         for src in self.parser:
             obj = self.parser[src]
@@ -2985,7 +3005,7 @@ class emake (object):
                 self.parser.error('error: %s: No such config section'%name, 
                     fname, lineno)
                 return -1
-            self.config.loadcfg(name, True)
+            self.config.loadcfg(self.config.profile, name, True)
         for inc in self.parser.inc:
             self.config.push_inc(inc)
             #print('inc', inc)
