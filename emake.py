@@ -3,7 +3,7 @@
 #  vim: set ts=4 sw=4 tw=0 et :
 #======================================================================
 #
-# emake.py - emake version 3.6.20
+# emake.py - emake version 3.6.21
 #
 # history of this file:
 # 2009.08.20   skywind   create this file
@@ -51,7 +51,7 @@ else:
 #----------------------------------------------------------------------
 # version info
 #----------------------------------------------------------------------
-EMAKE_VERSION = '3.6.20'
+EMAKE_VERSION = '3.6.21'
 EMAKE_DATE = 'Jan.30 2024'
 
 
@@ -2459,7 +2459,7 @@ class iparser (object):
             return 0
         if 'int' not in CFG:
             return 0
-        t = CFG['int'].strip()
+        t = CFG['int'].strip('\r\n\t ')
         if not t:
             return 0
         text = 'int: ' + CFG['int']
@@ -3470,10 +3470,11 @@ def main(argv = None):
     inipath = ''
 
     if options.get('cfg', None) is not None:
-        cfg = options['cfg']
-        cfg = os.path.expanduser('~/.config/emake/%s.ini'%cfg)
-        if 'ini' not in options:
-            options['ini'] = cfg
+        cfg = options['cfg'].strip('\r\n\t ')
+        if cfg:
+            cfg = os.path.expanduser('~/.config/emake/%s.ini'%cfg)
+            if 'ini' not in options:
+                options['ini'] = cfg
     elif 'EMAKE_CFG' in os.environ:
         cfg = os.environ['EMAKE_CFG']
         cfg = str(cfg).strip('\r\n\t ')
