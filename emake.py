@@ -3,7 +3,7 @@
 #  vim: set ts=4 sw=4 tw=0 et :
 #======================================================================
 #
-# emake.py - emake version 3.6.15
+# emake.py - emake version 3.6.20
 #
 # history of this file:
 # 2009.08.20   skywind   create this file
@@ -30,6 +30,7 @@
 # 2022.04.03   changning new: update to Python3 
 # 2023.09.20   skywind   new: --profile=debug/release options
 # 2023.10.08   skywind   new: try "flag@debug: -g"
+# 2023.12.07   skywind   new: "PATH" item in 'default' section
 #
 #======================================================================
 from __future__ import unicode_literals, print_function
@@ -50,8 +51,8 @@ else:
 #----------------------------------------------------------------------
 # version info
 #----------------------------------------------------------------------
-EMAKE_VERSION = '3.6.15'
-EMAKE_DATE = 'Oct.10 2023'
+EMAKE_VERSION = '3.6.20'
+EMAKE_DATE = 'Jan.30 2024'
 
 
 #----------------------------------------------------------------------
@@ -724,7 +725,7 @@ class configure(object):
     
     # 读取ini文件
     def _readini (self, inipath):
-        if self.unix and '~' in inipath:
+        if '~' in inipath:
             inipath = os.path.expanduser(inipath)
         if os.path.exists(inipath):
             self.iniload = os.path.abspath(inipath)
@@ -801,7 +802,7 @@ class configure(object):
             if self.unix:
                 self._readini('/etc/%s'%self.ininame)
                 self._readini('/usr/local/etc/%s'%self.ininame)
-                self._readini('~/.config/%s'%self.ininame)
+            self._readini('~/.config/%s'%self.ininame)
             self._readini(self.inipath)
         self.dirhome = self._getitem('default', 'home', '')
         cfghome = self.dirhome
@@ -893,6 +894,7 @@ class configure(object):
         self.replace['inipath'] = self.inipath
         self.replace['target'] = self.target
         self.replace['profile'] = self.profile
+        self._reset_path()
         self.inited = True
         return 0
 
@@ -900,6 +902,31 @@ class configure(object):
     def _getitem (self, sect, key, default = ''):
         return self.config.get(sect, {}).get(key, default)
     
+    # reset $PATH
+    def _reset_path (self):
+        PATH = self._getitem('default', 'path', '').strip()
+        if not PATH:
+            return -1
+        sep = self.unix and ':' or ';'
+        pathout = []
+        for path in PATH.split(sep):
+            if os.path.isabs(path):
+                pathout.append(path)
+            elif os.path.exists(self.inipath):
+                inihome = os.path.dirname(os.path.abspath(self.inipath))
+                t = os.path.join(inihome, path)
+                pathout.append(t)
+        if 'PATH' not in CFG:
+            CFG['PATH'] = os.environ.get('PATH', '')
+        self._origin_os_path = CFG['PATH']
+        finalize = []
+        for path in pathout:
+            finalize.append(path)
+        t = sep.join(finalize)
+        self._new_os_path = t + sep + os.environ.get('PATH', '')
+        os.environ['PATH'] = self._new_os_path
+        return 0
+
     # 取得替换了$(HOME)变量的路径
     def path (self, path):
         path = path.replace('$(HOME)', self.dirhome).replace('\\', '/')
@@ -2086,7 +2113,7 @@ class coremake(object):
         for k, v in envsave.items():
             if os.environ.get(k) != v: 
                 os.environ[k] = v
-        for k in os.environ.keys():
+        for k in list(os.environ.keys()):
             if k not in envsave: 
                 del os.environ[k]
         return True
@@ -2381,6 +2408,7 @@ class iparser (object):
             if self._process(self.makefile, lineno, text) != 0:
                 retval = -1
                 break
+        self._process_int()
         os.chdir(savedir)
         self.push_src(self.makefile, '')
         return retval
@@ -2402,6 +2430,7 @@ class iparser (object):
                 retval = -1
                 break
             lineno += 1
+        self._process_int()
         os.chdir(savedir)
         return retval
     
@@ -2423,6 +2452,19 @@ class iparser (object):
                         mainfile, lineno)
                 hr = 1
         return hr
+
+    # 处理 --int=xxx
+    def _process_int (self):
+        if self.int != '':
+            return 0
+        if 'int' not in CFG:
+            return 0
+        t = CFG['int'].strip()
+        if not t:
+            return 0
+        text = 'int: ' + CFG['int']
+        self._process('<inline>', 0, text)
+        return 0
 
     # 处理源文件
     def _process_src (self, textline, fname = '', lineno = -1):
@@ -2515,7 +2557,7 @@ class iparser (object):
             return 0
         if command in ('int', 'intermediate'):
             body = body.strip('\r\n\t ')
-            if body in ('<auto>', '$(auto)', '!', '?', '*'):
+            if body in ('<auto>', '$(auto)', '!', '?', '*', '+'):
                 dirname = self.config.target
                 if self.profile:
                     dirname += '-' + self.profile
@@ -3217,7 +3259,7 @@ def install():
         print('error: install must under unix')
         return -2
     try:
-        f1 = open(filepath, 'r')
+        f1 = open(filepath, 'rb')
     except:
         print('error: cannot read "%s"'%filepath)
         return -3
@@ -3232,12 +3274,12 @@ def install():
         print('/usr/local/bin/emake already exists, you should delete it')
         return -7
     try:
-        f2 = open(name2, 'w')
+        f2 = open(name2, 'wb')
     except:
         print('error: cannot write "%s"'%name2)
         return -4
     try:
-        f3 = open(name3, 'w')
+        f3 = open(name3, 'wb')
     except:
         print('error: cannot write "%s"'%name3)
         f2.close()
@@ -3532,6 +3574,9 @@ def main(argv = None):
 
     if 'print' in options:
         printmode = int_safe(options['print'], 3)
+
+    if 'int' in options:
+        CFG['int'] = options['int']
 
     printenv = os.environ.get('EMAKE_PRINT', '')
 
