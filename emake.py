@@ -3,7 +3,7 @@
 #  vim: set ts=4 sw=4 tw=0 et :
 #======================================================================
 #
-# emake.py - emake version 3.6.21
+# emake.py - emake version 3.7.1
 #
 # history of this file:
 # 2009.08.20   skywind   create this file
@@ -31,6 +31,7 @@
 # 2023.09.20   skywind   new: --profile=debug/release options
 # 2023.10.08   skywind   new: try "flag@debug: -g"
 # 2023.12.07   skywind   new: "PATH" item in 'default' section
+# 2024.05.06   skywind   new: "pkg: xxx" to import pkg-config packages
 #
 #======================================================================
 from __future__ import unicode_literals, print_function
@@ -51,8 +52,8 @@ else:
 #----------------------------------------------------------------------
 # version info
 #----------------------------------------------------------------------
-EMAKE_VERSION = '3.6.21'
-EMAKE_DATE = 'Jan.30 2024'
+EMAKE_VERSION = '3.7.1'
+EMAKE_DATE = 'May.06 2024'
 
 
 #----------------------------------------------------------------------
@@ -605,21 +606,21 @@ class configure(object):
         self.profile = None
         self.reset()
     
-    # 配置信息复位
+    # reset all configure
     def reset (self):
-        self.inc = {}         # include路径
-        self.lib = {}         # lib 路径
-        self.flag = {}        # 编译参数
-        self.pdef = {}        # 预定义宏
-        self.link = {}        # 连接库
-        self.flnk = {}        # 连接参数
-        self.wlnk = {}        # 连接传递
-        self.cond = {}        # 条件参数
+        self.inc = {}         # include paths
+        self.lib = {}         # lib paths
+        self.flag = {}        # compile flags
+        self.pdef = {}        # predefined macros
+        self.link = {}        # libraries
+        self.flnk = {}        # link flags
+        self.wlnk = {}        # link pass
+        self.cond = {}        # condition flags
         self.param_build = ''
         self.param_compile = ''
         return 0
     
-    # 初始化工具环境
+    # initialize environment for command tool
     def _cmdline_init (self, envname, exename):
         if envname not in self.config:
             return -1
@@ -653,7 +654,7 @@ class configure(object):
             EXEC = self.pathshort(EXEC)
         return EXEC
     
-    # 工具加载
+    # environment configuration for cmdline tool
     def _env_config (self, section):
         config = {}
         if section in self.config:
@@ -665,7 +666,7 @@ class configure(object):
             config[n] = self._expand(config, self.environ, n)
         return config
 
-    # 展开配置宏
+    # expand macro
     def _expand (self, section, environ, item, d = 0):
         if not environ: environ = {}
         if not section: section = {}
@@ -698,7 +699,7 @@ class configure(object):
         # print('>', text)
         return text
     
-    # 取得短文件名
+    # calculate short path name
     def pathshort (self, path):
         path = os.path.abspath(path)
         if self.unix:
@@ -723,7 +724,7 @@ class configure(object):
             return ''
         return shortpath
     
-    # 读取ini文件
+    # read ini files
     def _readini (self, inipath):
         if '~' in inipath:
             inipath = os.path.expanduser(inipath)
@@ -752,6 +753,10 @@ class configure(object):
                 if exename not in config['default']:
                     continue
                 self.exename[exename] = config['default'][exename]
+            for exename in ('pkg-config', 'pkgconfig'):
+                if exename not in config['default']:
+                    continue
+                self.exename['pkgconfig'] = config['default'][exename]
             for bp in ('include', 'lib'):
                 if bp not in config['default']:
                     continue
@@ -774,7 +779,7 @@ class configure(object):
             self.haveini = True
         return 0
 
-    # 检查 dirhome
+    # check dirhome
     def check (self):
         if not self.dirhome:
             sys.stderr.write('error: cannot find gcc home in config\n')
@@ -782,7 +787,7 @@ class configure(object):
             sys.exit(1)
         return 0
 
-    # 初始化
+    # init configure
     def init (self):
         if self.inited:
             return 0
@@ -898,7 +903,7 @@ class configure(object):
         self.inited = True
         return 0
 
-    # 读取配置
+    # read configuration
     def _getitem (self, sect, key, default = ''):
         return self.config.get(sect, {}).get(key, default)
     
@@ -1278,7 +1283,7 @@ class configure(object):
             if name: path = name
         return path
     
-    # 执行GNU工具集
+    # execute GNU tools
     def execute (self, binname, parameters, printcmd = False, capture = False):
         path = os.path.abspath(os.path.join(self.dirhome, binname))
         if not self.unix:
@@ -1294,14 +1299,17 @@ class configure(object):
             else: text = cmd + '\n'
         sys.stdout.flush()
         sys.stderr.flush()
+        os.shell_return = -1
+        self.shell_return = -1
         output = execute(cmd, shell = False, capture = capture)
+        self.shell_return = os.shell_return
         if sys.version_info[0] >= 3:
             if isinstance(output, bytes):
                 output = posix.decode_string(output)
         text = text + output
         return text
     
-    # 调用 gcc
+    # execute gcc
     def gcc (self, parameters, needlink, printcmd = False, capture = False):
         param = self.param_build
         if not needlink:
@@ -1364,7 +1372,13 @@ class configure(object):
         dllwrap = self.exename.get('dllwrap', 'dllwrap')
         return self.execute(dllwrap, parameters, printcmd, capture)
     
-    # 生成lib库
+    # call pkg-config
+    def pkgconfig (self, parameters, printcmd = False, capture = False):
+        pkgconfig = self.exename.get('pkgconfig', 'pkg-config')
+        text = self.execute(pkgconfig, parameters, printcmd, capture)
+        return self.shell_return, text
+
+    # create lib file
     def makelib (self, output, objs = [], printcmd = False, capture = False):
         if 0:
             name = ' '.join([ self.pathrel(n) for n in objs ])
@@ -1377,7 +1391,7 @@ class configure(object):
                     objs.append(link)
         return self.composite(output, objs, printcmd, capture)
     
-    # 生成动态链接：dll 或者 so
+    # create dynamic library: .so or .dll
     def makedll (self, output, objs = [], param = '', printcmd = False, capture = False):
         if (not param) or (self.unix):
             if sys.platform[:6] == 'darwin':
@@ -1393,7 +1407,7 @@ class configure(object):
                 self.pathrel(output), name)
             return self.dllwrap(parameters, printcmd, capture)
     
-    # 生成exe
+    # create executable file
     def makeexe (self, output, objs = [], param = '', printcmd = False, capture = False):
         name = ' '.join([ self.pathrel(n) for n in objs ])
         if self.xlink:
@@ -1401,7 +1415,7 @@ class configure(object):
         parameters = '-o %s %s %s'%(self.pathrel(output), param, name)
         return self.gcc(parameters, True, printcmd, capture)
 
-    # 合并.o .a文件为新的 .a文件 
+    # merge .o and .a files into new .a file
     def composite (self, output, objs = [], printcmd = False, capture = False):
         import os, tempfile, shutil
         cwd = os.getcwd()
@@ -1452,7 +1466,7 @@ class configure(object):
         shutil.rmtree(temp)
         return 0
 
-    # 运行工具
+    # run tool
     def cmdtool (self, sectname, exename, parameters, printcmd = False):
         envsave = [ (n, os.environ[n]) for n in os.environ ]
         hr = self._cmdline_init(sectname, exename)
@@ -1683,7 +1697,7 @@ class configure(object):
     
     # 执行 java命令: cmd 为 java, javac, jar等
     def java_call (self, cmd, args = [], capture = False):
-        if self.__jdk_home == None:
+        if self.__jdk_home is None:
             self.__jdk_home = self.java_home()
         if not self.__jdk_home:
             sys.stderr.write('can not find java in $JAVA_HOME or $PATH\n')
@@ -2154,6 +2168,8 @@ class iparser (object):
         self.flnk = []
         self.wlnk = []
         self.cond = []
+        self.pkg = []
+        self.pkgflag = []
         self.environ = {}
         self.events = {}
         self.mode = 'exe'
@@ -2172,6 +2188,7 @@ class iparser (object):
         self.optdict = {}
         self.impdict = {}
         self.expdict = {}
+        self.pkgdict = {}
         self.linkdict = {}
         self.flagdict = {}
         self.flnkdict = {}
@@ -2253,6 +2270,7 @@ class iparser (object):
             return -1
         self.flnkdict[flnk] = len(self.flnk)
         self.flnk.append(flnk)
+        return 0
 
     # 添加连接传递
     def push_wlnk (self, wlnk):
@@ -2260,6 +2278,7 @@ class iparser (object):
             return -1
         self.wlnkdict[wlnk] = len(self.wlnk)
         self.wlnk.append(wlnk)
+        return 0
 
     # 添加条件编译
     def push_cond (self, flag, condition):
@@ -2268,21 +2287,35 @@ class iparser (object):
             return -1
         self.conddict[key] = len(self.cond)
         self.cond.append(key)
+        return 0
     
-    # 添加导入配置
+    # new import
     def push_imp (self, name, fname = '', lineno = -1):
         if name in self.impdict:
             return -1
         self.impdict[name] = len(self.imp)
         self.imp.append((name, fname, lineno))
         return 0
+
+    # new package
+    def push_pkg (self, name, fname = '', lineno = -1):
+        if name in self.pkgdict:
+            return -1
+        self.pkgdict[name] = len(self.pkg)
+        self.pkg.append((name, fname, lineno))
+        return 0
     
-    # 添加输出配置
+    # new export
     def push_exp (self, name, fname = '', lineno = -1):
         if name in self.expdict:
             return -1
         self.expdict[name] = len(self.exp)
         self.exp.append((name, fname, lineno))
+        return 0
+
+    # new pkgflag
+    def push_pkgflag (self, name, fname = '', lineno = -1):
+        self.pkgflag.append((name, fname, lineno))
     
     # 添加环境变量
     def push_environ (self, name, value):
@@ -2542,7 +2575,9 @@ class iparser (object):
         environ['home'] = os.path.dirname(os.path.abspath(fname))
         environ['bin'] = self.config.dirhome
         environ['profile'] = self.profile and self.profile or 'none'
-        for name in ('gcc', 'ar', 'ld', 'as', 'nasm', 'yasm', 'dllwrap'):
+        names = ['gcc', 'ar', 'ld', 'as', 'nasm', 'yasm']
+        names = names + ['dllwrap', 'pkgconfig']
+        for name in names:
             if name in self.config.exename:
                 data = self.config.exename[name]
                 environ[name] = os.path.join(self.config.dirhome, data)
@@ -2639,6 +2674,20 @@ class iparser (object):
         if command in ('argcc', 'ac'):
             self.push_flag(body.strip('\r\n\t '))
             return 0
+        if command in ('pkg', 'package'):
+            for name in body.replace(';', ',').split(','):
+                name = self.pathconf(name)
+                if not name:
+                    continue
+                self.push_pkg(name, fname, lineno)
+            return 0
+        if command in ('pkgflag', 'pcflag'):
+            for name in body.replace(';', ',').split(','):
+                name = self.pathconf(name)
+                if not name:
+                    continue
+                self.push_pkgflag(name, fname, lineno)
+            return 0
         if command == 'define':
             for name in body.replace(';', ',').split(','):
                 srcname = self.pathconf(name).replace(' ', '_')
@@ -2707,6 +2756,13 @@ class iparser (object):
                 if not name:
                     continue
                 self.push_exp(name, fname, lineno)
+            return 0
+        if command in ('pkg', 'package'):
+            for name in body.replace(';', ',').split(','):
+                name = self.pathconf(name)
+                if not name:
+                    continue
+                self.push_pkg(name, fname, lineno)
             return 0
         if command == 'echo':
             print(body)
@@ -3072,10 +3128,53 @@ class emake (object):
         if self.parser.mode == 'dll' and self.config.unix:
             if self.config.fpic:
                 self.config.push_flag('-fPIC')
+        if self.parser.pkg:
+            hr = self._pkg_config()
+            if hr != 0:
+                return hr
         for name, fname, lineno in self.parser.exp:
             self.coremake.dllwrap(name)
         self.config.parameters()
         #print('replace', self.config.replace)
+        return 0
+
+    # run pkg-config
+    def _pkg_config (self):
+        if not self.parser.pkg:
+            return 0
+        flags = ' '.join([n[0] for n in self.parser.pkgflag])
+        pkgs = ' '.join([n[0] for n in self.parser.pkg])
+        parameter = flags + ' ' + pkgs
+        p1 = '--cflags-only-I ' + parameter
+        p2 = '--libs ' + parameter
+        fname = self.parser.pkg[0][1]
+        flnum = self.parser.pkg[0][2]
+        printcmd = False
+        code, text1 = self.coremake.config.pkgconfig(p1, printcmd, True)
+        if code != 0:
+            for line in text1.split('\n'):
+                line = line.rstrip('\r\n\t ')
+                if line:
+                    msg = 'error: %s'%(line)
+                    self.parser.error(msg, fname, flnum)
+            return -2
+        code, text2 = self.coremake.config.pkgconfig(p2, printcmd, True)
+        if code != 0:
+            for line in text1.split('\n'):
+                line = line.rstrip('\r\n\t ')
+                if line:
+                    msg = 'error: %s'%(line)
+                    self.parser.error(msg, fname, flnum)
+            return -3
+        text1 = text1.strip('\r\n\t ')
+        text2 = text2.strip('\r\n\t ')
+        if text1:
+            self.config.push_flag(text1)
+        if text2:
+            self.config.push_flnk(text2)
+        if 0:
+            print('pkg-inc: %s'%(text1))
+            print('pkg-lib: %s'%(text2))
         return 0
 
     def _check_error (self):
