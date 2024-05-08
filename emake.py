@@ -144,7 +144,8 @@ class posix (object):
             if isinstance(text, str):
                 return text
         else:
-            if isinstance(text, unicode):
+            # pylint: disable-next=else-if-used
+            if isinstance(text, unicode):  # noqa
                 return text
         if encoding is not None:
             return text.decode(encoding, errors = 'ignore')
