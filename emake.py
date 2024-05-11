@@ -3847,7 +3847,7 @@ if __name__ == '__main__':
         name = 'e:/zombie/demo01.c'  # noqa: F841
         make.mkdir(r'e:\lab\malloc\obj list')
         make.mkdir(r'e:\lab\malloc\abc c\01 2\3 4\5\6')
-        make.init('mainmod', 'exe', 'malloc\obj')
+        make.init('mainmod', 'exe', 'malloc/obj')
         make.push('malloc/main.c')
         make.push('malloc/mod1.c')
         make.push('malloc/mod2.c')
