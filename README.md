@@ -47,7 +47,7 @@ d:\dev\python311\python.exe d:\dev\mingw\emake.py %*
 
 修改一下对应路径即可，建立这个 emake.cmd 的批处理文件是为了方便每次敲 emake 就可以工作，避免敲 "python emake.py" 一长串。
 
-## Tutorial
+## 快速开始
 
 假设你有三个文件：foo.c, bar.c, main.c 共同编译成名字为 main(.exe) 的可执行文件，我们创建 “main.mak” 文件：
 
@@ -162,9 +162,43 @@ src: main.c
 
 ## Documentation
 
-emake 的工程文件里面支持下面几种设置：
+Emake 的工程文件里面支持下面几种核心设置：
 
-### src
+| 名称 | 含义 |
+|-|-|
+| src | 指定项目源文件，逗号分割，支持通配符 |
+| inc | 指定 include 目录，逗号分割，支持相对路径（相对于工程文件）|
+| lib | 指定库文件目录，格式同上 |
+| link | 指定库文件，逗号分割，比如 `lib: png` 就会连接 `libpng.a` |
+| flag | 指定编译通用选项，逗号分割 |
+| cflag | 指定 C 语言的编译选项，逗号分割 |
+| cxxflag | 指定 C++ 的编译选项，逗号分割 |
+| define | 定义宏，格式为 `define: USE_UTF8=1`，可用逗号间隔多个宏 |
+| mode | 设置目标格式：`exe`，`lib`, `dll`, `win` 几种 |
+| out | 设置目标文件名 |
+| int | 设置临时目录，放置 `.o` 文件和中间文件 |
+| flnk | 连接时传入的参数，逗号分割 |
+| wlnk | 连接时使用 `-Wl,` 前缀直接透传给 `ld` 的参数，逗号分割 |
+
+还支持几种辅助配置：
+
+| 名称 | 含义 |
+|-|-|
+| export | 当 mode 为 dll 时导出符号成 `.lib` 文件给 MSVC 用 |
+| import | 从 emake.ini 配置的非 `default` 区导入配置 |
+| package | 从 pkg-config 导入某个包配置，并设置 inc/lib 目录和 link 选项 |
+| pcflag | 调用 pkg-config 时的参数 |
+| echo | 输出文字 |
+| color | 设置 echo 的颜色 |
+| preload | 事件：加载前，后接 shell 命令 |
+| prebuild | 事件：编译前，后接 shell 命令 |
+| prelink | 事件：连接前，后接 shell 命令 |
+| postbuild | 事件：构建后，即连接成功了就调用，后接 shell 命令 |
+| environ | 设置环境变量 |
+
+下面对其中几项略作说明。
+
+#### 添加源代码
 
 用于声明项目里面的源文件，格式：
 
@@ -189,9 +223,9 @@ src: core/*.c
 src: source/*.cpp
 ```
 
-### inc
+#### 目录设置
 
-声明项目中的 include 文件夹，相当于 gcc 的 -I 命令：
+声明项目中的 include 文件夹，相当于 gcc 的 `-I` 命令：
 
 ```make
 inc: dir1
@@ -204,13 +238,9 @@ inc: dir2
 inc: dir1, dir2
 ```
 
-和 src 一样可以使用逗号分隔。
+和 src 一样可以使用逗号分隔；而 `lib` 选项用于设置库文件目录，相当于 gcc 的 `-L` 命令，格式和 `inc` 类似。
 
-### lib
-
-设置库文件目录，格式同上
-
-### link
+#### 连接静态库
 
 添加需要链接的库，相当于 gcc 的 -l 指令：
 
@@ -228,7 +258,7 @@ link: stdc++
 
 同时支持单行和多行模式，编译 C++ 项目别忘记链接 stdc++。
 
-### mode
+#### 目标格式
 
 目标文件的输出格式：
 
@@ -239,17 +269,9 @@ mode: [exe|lib|dll|win]
 - exe: 生成可执行文件
 - lib: 生成静态链接库
 - dll: 生成动态链接库
-- win: windows下特有，生成无 console窗口的 windows程序。
+- win: Windows 下特有，生成无 console 窗口的 Windows 程序。
 
-### out
-
-指定目标文件的文件名：
-
-```make
-out: target_file_name
-```
-
-### int
+#### 临时目录
 
 指定中间临时文件目录，一般设置为：
 
@@ -263,69 +285,40 @@ int: objs
 int: objs/$(target)
 ```
 
-### flag
+指定了以后，可以避免项目中间文件污染当前目录。
 
-指定编译参数，会被直接传递给 gcc.
+#### 条件编译
+
+在 emake.ini 中可以指明一系列 name，比如：
+
+```ini
+[default]
+name=android,posix,nossl
+```
+
+每个名字代表一个条件，可以同时定义多个条件，然后在项目配置里使用：
+
+```text
+<name>/option: value
+```
+
+来声明，只有 emake.ini 的 name 里包含特定内容时，才会触发后面内容，比如：
 
 ```make
-flag: -Wall, -g, -pg
+win32/link: pdcurses_wincon
+linux/link: ncurses, tinfo
 ```
 
-诸如此，除了通用的 `flag` 以外，还有针对 c 代码的 `cflag` 和针对 c++ 的 `cxxflag` 可以单独指定。
+这两条语句代表不同平台 link 不同的库，目标平台名称无需声明，会自动添加到 name 中，可以在 emake.ini 中用：
 
-### Events
-
-根据条件运行不同 shell 命令：
-
-```
-# 加载前
-preload: echo "preload"
-
-# 编译前
-prebuild: echo "prebuild"
-
-# 链接前
-prelink: echo "prelink"
-
-# 编译后
-postbuild: echo "postbuild"
+```ini
+[default]
+target=android
 ```
 
-其中 `preload` 和 `prebuild` 之间的区别是，`preload` 每次都会运行，并且是在解析项目文件和分析依赖之前运行，而 `prebuild` 是在解析项目文件分析依赖之后运行，如果二进制没更新，`prebuild` 就不会被调用，而 `preload` 每次都无条件被执行。
+手工指明目标平台的名称，默认的话，会使用 python 里的 `sys.platform` 返回值。
 
-比如某个源代码是使用其他工具生成的，放到 `prebuild` 时，应为处于依赖分析之后，初次构建尚未触发生成代码前面依赖分析就会报找不到文件了，但 `preload` 在依赖分析之前运行。
-
-## Specification
-
-完整设置有：
-
-| 名称 | 含义 |
-|-|-|
-| src | 指定项目源文件，逗号分割，支持通配符 |
-| inc | 指定 include 目录，逗号分割，支持相对路径（相对于工程文件）|
-| lib | 指定库文件目录，格式同上 |
-| link | 指定库文件，逗号分割，比如 `lib: png` 就会连接 `libpng.a` |
-| flag | 指定编译通用选项，逗号分割 |
-| cflag | 指定 C 语言的编译选项，逗号分割 |
-| cxxflag | 指定 C++ 的编译选项，逗号分割 |
-| define | 定义宏，格式为 `define: USE_UTF8=1`，可用逗号间隔多个宏 |
-| mode | 设置目标格式：`exe`，`lib`, `dll`, `win` 几种 |
-| out | 设置目标文件名 |
-| int | 设置临时目录，放置 `.o` 文件和中间文件 |
-| flnk | 连接时传入的参数，逗号分割 |
-| wlnk | 连接时使用 `-Wl,` 前缀直接透传给 `ld` 的参数，逗号分割 |
-| export | 当 mode 为 dll 时导出符号成 `.lib` 文件给 MSVC 用 |
-| package | 从 pkg-config 导入某个包配置，并设置 inc/lib 目录和 link 选项 |
-| pcflag | 调用 pkg-config 时的参数 |
-| echo | 输出文字 |
-| color | 设置 echo 的颜色 |
-| preload | 事件：加载前 |
-| prebuild | 事件：编译前 |
-| prelink | 事件：连接前 |
-| postbuild | 事件：构建后，即连接成功了就调用 |
-| environ | 设置环境变量 |
-
-## Profile
+#### 编译配置
 
 在启动 emake 时可以设置一个 `--profile` 参数来指定 debug/release 等不同的构建配置：
 
@@ -352,6 +345,30 @@ linux/out@debug: rogue-cloned
 ```
 
 这里分别演示了在不同平台下，不同 profile 可以指定不同的配置。
+
+
+#### 事件机制
+
+根据条件运行不同 shell 命令：
+
+```
+# 加载前
+preload: echo "preload"
+
+# 编译前
+prebuild: echo "prebuild"
+
+# 链接前
+prelink: echo "prelink"
+
+# 编译后
+postbuild: echo "postbuild"
+```
+
+其中 `preload` 和 `prebuild` 之间的区别是，`preload` 每次都会运行，并且是在解析项目文件和分析依赖之前运行，而 `prebuild` 是在解析项目文件分析依赖之后运行，如果二进制没更新，`prebuild` 就不会被调用，而 `preload` 每次都无条件被执行。
+
+比如某个源代码是使用其他工具生成的，放到 `prebuild` 时，应为处于依赖分析之后，初次构建尚未触发生成代码前面依赖分析就会报找不到文件了，但 `preload` 在依赖分析之前运行。
+
 
 ## Settings
 
