@@ -444,6 +444,7 @@ target=win32
 | cpu | 后面跟一个数字，多核编译的核心数量 |
 | target | 目标平台名称，比如 `win32` 和 `linux`，不提供的话会使用 Python 的 `sys.platform` 作为默认值 |
 | name | 条件编译的条件变量名称，逗号分割，比如 "android,posix,nossl"，注意 target 的值会自动加入到 name 中，方便根据目标平台进行条件判断  |
+| pcpath | 包管理工具 `pkg-config` 的 `.pc` 文件搜索路径，即 `$PKG_CONFIG_PATH` 这个环境变量的值  |
 
 上面的配置用于确定工具链的位置和运行方式，下面这些用于通用项目配置
 
@@ -519,8 +520,20 @@ pcflag: --atlatest-version, --env-only
 
 这也这个参数就会传递给 `pkg-config`。
 
-这是推荐的包导入方式，而如果一个包没有 `.pc` 文件，`pkg-config` 找不到的话，可以用上面的 `import` 方式导入一个工具链 ini 配置文件里的 section。
+还可以在工具链配置文件中，指定 `$PKG_CONFIG_PATH` 这个环境变量：
 
+```ini
+[default]
+...
+pcpath=D:/arm32-devkit/lib/pkgconfig
+...
+```
+
+这样调用 `pkg-config` 前会先设置这个环境变量，控制 `pkg-config` 搜索 `.pc` 文件的位置，当然工程文件也可以配合指明下 `pcflag: --env-only` 跳过默认搜索路径。
+
+通常情况下不用特别设置 `pcpath`，因为工具链自带的 `pkg-config` 一般能够根据自身位置正确搜索到工具链内的 `.pc` 文件的，除非你还有其他位置自己管理额外的 `.pc` 或者工具链不提供 `pkg-config` 工具，你需要依赖一个外部的 `pkg-config` 程序。
+
+这是推荐的包导入方式，而如果一个包没有 `.pc` 文件，`pkg-config` 找不到的话，可以用上面的 `import` 方式导入一个工具链 ini 配置文件里的 section。
 
 
 ## Rapid Development
