@@ -1,6 +1,6 @@
 ## Preface
 
-GNU Make 太麻烦？Makefile 写起来太臃肿？头文件依赖生成搞不定？多核同时编译太麻烦？Emake 帮你解决这些问题：
+GNU Make 太麻烦？Makefile 写起来太臃肿？头文件依赖生成搞不定？多核同时编译不好弄？Emake 帮你解决这些问题：
 
 - 使用简单：设定源文件，设定编译参数和输出目标就行了，emake为你打点好一切。
 - 依赖分析：快速分析源代码所依赖的头文件，决定是否需要重新编译。
@@ -13,8 +13,8 @@ GNU Make 太麻烦？Makefile 写起来太臃肿？头文件依赖生成搞不�
 - 工具支持 `gcc` / `mingw` / `clang` 
 - 运行系统 `Windows` / `Linux` / `Mac OS X` / `FreeBSD` 
 - 信息导出：项目文件列表，目标文件，以及 `compile_commands.json` 等。
-- 方便的交叉编译，轻松构建 `Android NDK` / `iOS` / `asm.js` 项目
-- 你见过最简单的构建系统，比 Gnu Make / CMake 都简单很多
+- 方便的交叉编译，轻松构建 `Android NDK` / `iOS` / `asm.js` 项目。
+- 你见过最简单的构建系统，比 Gnu Make / CMake 都简单很多。
 
 只有两三个源代码，那 makefile 随便写，文件一多，搞依赖都可以搞死人。emake 就是简单中的简单，不但比 GNU Make 简单，还要比 cmake 简单很多。
 
@@ -160,7 +160,7 @@ src: main.c
 
 ```
 
-## Documentation
+## 项目配置
 
 Emake 的工程文件里面支持下面几种核心设置：
 
@@ -296,7 +296,7 @@ int: objs/$(target)
 name=android,posix,nossl
 ```
 
-每个名字代表一个条件，可以同时定义多个条件，然后在项目配置里使用：
+每个名字代表一个条件，可以同时定义多个条件，然后在工程文件里使用：
 
 ```text
 <name>/option: value
@@ -326,7 +326,7 @@ target=android
 python emake.py --profile=debug main.mak
 ```
 
-而在项目配置里，用 `@` 符号来指定某个配置是属于什么 profile 的，比如：
+而在工程文件里，用 `@` 符号来指定某个配置是属于什么 profile 的，比如：
 
 ```make
 flag@debug: -g, -Og
@@ -370,109 +370,158 @@ postbuild: echo "postbuild"
 比如某个源代码是使用其他工具生成的，放到 `prebuild` 时，应为处于依赖分析之后，初次构建尚未触发生成代码前面依赖分析就会报找不到文件了，但 `preload` 在依赖分析之前运行。
 
 
-## Settings
+## 工具链配置
 
-Emake 可以指定一个 ini 文件来进行全局配置，设置工具链，默认编译参数等。
+Emake 支持多个工具链，每个工具链使用一个 ini 进行描述，不显示指定工具链的名字的话，会到下面几个位置寻找默认工具链配置：
 
-原来是：
-	
-	emake <parameters>
+1）在 `emake.py` 同级目录查找 `emake.ini` 。
+2）/etc/emake.ini 
+3）/usr/local/etc/emake.ini
+4）~/.config/emake.ini
 
-手动指定配置文件名：
+默认工具链配置并不强制，没提供的话，Emake 也会到 `$PATH` 中寻找 gcc 等工具并自动设置。
 
-	emake --ini=xxx.ini <parameters> 
-
-如果不指明的话，会首先在当前文件夹寻找 emake.ini 文件，同时 Linux 下面的话，还会相继在下面三个位置：
-
-	/etc/emake.ini
-	/usr/local/etc/emake.ini
-	~/.config/emake.ini
-
-另外一种指定配置的方式是 `--cfg=name` 方式：
+如果想用别的工具链配置的话，使用 `--cfg=name` 参数就会加载 `~/.config/emake/{name}.ini` ：
 
     emake --cfg=mingw64 <parameters>
 
-这样它会去试图加载 `~/.config/emake/{name}.ini` ，方便你集中管理不同的全局配置文件。
+这样它会去试图加载 `~/.config/emake/mingw64.ini`，也可以用 `--ini=path` 直接给 ini 文件绝对路径：
 
-进行寻找。该配置文件确定了一些编译的默认配置，在该配置文件中，可以：
+	emake --ini=/absolute/path/to/name.ini <parameters> 
 
-- 更改默认编译器的可执行文件名
-- 更改默认连接器的可执行文件名
-- 设定编译条件
-- 设定默认编译的参数：include / lib 等文件夹等
-- 设定编译器启动的一些环境变量
-- 设定多核编译时的 cpu 数量。
-- 预先设定一些 section，工程文件可以 import 特定的 section。
+通常使用 `--cfg=name`，并在 `~/.config/emake` 目录下统一管理所有配置，比如你有多套工具链，每个工具链一个配置放进去，用起来比较方便，特别是有交叉编译的情况时。
 
-由上面这些设定，emake 可以灵活的调用各种工具链，方便的进行项目构建和交叉编译。比如我在 Windows 下面的 emake.ini 部分内容：
+#### 配置格式
+
+工具链配置文件的内容类似：
 
 ```ini
 [default]
-flag=-Wall, -I$(inihome)/../mylibs
-link=stdc++, winmm, wsock32, opengl32, gdi32, glu32, ws2_32, user32
+home=d:/msys32/mingw32/bin
+path=d:/msys32/mingw32/bin;d:/gnutools/bin
 
-include=d:/dev/local/include
-lib=d:/dev/local/lib
+flag=-Wall
+link=stdc++, winmm, wsock32, user32, ws2_32
 
-cpu=6
+define@debug=_DEBUG=1
+define@release=_RELEASE=1
+define@static=_STATIC=1, _RELEASE=1
+
+flag@debug=-Og, -g, -fno-omit-frame-pointer
+flag@release=-O3
+flag@static=-O3, -static
+
+cpu=4
+
+target=win32
+```
+
+配置都包括在 ini 的 `[default]` 区，其中第一行使用 `home` 定义了工具链的 `bin` 目录，在哪里将找到 `gcc`, `ar`, `as`, `ld` 等工具，可以用绝对路径，也可以用相对于 ini 文件的路径。
+
+接下来使用 `path` 定义了调用工具链前需要把哪些目录追加到系统变量 `$PATH` 前，在 Windows 下使用 `;` 分割，其他系统使用 `:` 分割。
+
+中间就是一些通用参数，和针对 `debug`, `release` 和 `static` 三种 profile 的不同设置，然后用 `cpu=4` 指定了同时使用四核编译。
+
+最后用 `target` 声明目标平台的名字是 `win32`。
+
+这样的 ini 配置文件除了上面默认的位置加载外，还可以手工指定。
+
+
+#### 配置项目
+
+工具链配置文件的 `[default]` 区支持下面几种配置：
+
+| 名称 | 含义 |
+|-|-|
+| home | 工具链的 bin 目录，下面可以找到 gcc 和 ld 等工具，可以用绝对路径或相对于 ini 文件的路径，不提供的话会搜索 `$PATH` 中的 gcc，比如默认工具链配置可以不写，如果 gcc 刚好在你的 `$PATH` 中的话 |
+| gcc |  gcc 工具的可执行文件名，默认不提供的话，就会试图去调用 "gcc"，如果不是这个名字的话，可以用该选项配置一下，比如设置成 "clang" 可以调用 clang，而很多交叉编译工具链前面一般有一串前缀，比如 "arm-linux-androideabi-gcc" 这也，也需要设置 |
+| ar | 静态库工具名，同上 |
+| ld | 连接器工具名，同上 |
+| as | 汇编器工具名，同上 |
+| dllwrap | 动态库封装工具名，同上 |
+| pkgconfig | pkgconfig 工具名，默认为 `pkg-config` |
+| path | 调用工具时额外需要加入 `$PATH` 的路径，Windows 下用 `;` 分割，其他系统用 `:` 分割多个项目；很多工具链的 bin 目录并不会加入系统的 `$PATH`，但里面的工具又会互相调用，使用这个选项可以不污染外部环境变量，只有在 emake 进程里临时设置 `$PATH` 变量，干净一些 |
+| cpu | 后面跟一个数字，多核编译的核心数量 |
+| target | 目标平台名称，比如 `win32` 和 `linux`，不提供的话会使用 Python 的 `sys.platform` 作为默认值 |
+| name | 条件编译的条件变量名称，逗号分割，比如 "android,posix,nossl"，注意 target 的值会自动加入到 name 中，方便根据目标平台进行条件判断  |
+
+上面的配置用于确定工具链的位置和运行方式，下面这些用于通用项目配置
+
+| 名称 | 含义 |
+|-|-|
+| include | 额外的全局 include 目录，逗号分割，类似项目配置里的 `inc` 选项，如果有一些多个项目都需要设置的 include 目录，可以把它设置到工具链配置里，这也就不用每个项目都写了 |
+| lib | 额外的全局 lib 目录，逗号分割，类似项目配置里的 `lib` 选项 |
+| flag | 全局编译参数，类似项目配置里的 `flag` 选项，编译具体项目时，会添加到项目配置的 flag 前面 |
+| cflag| 全局 C 语言编译参数，类似项目配置里的 `cflag` 选项 |
+| cxxflag | 全局 C++ 编译参数，类似项目配置里的 `cxxflag` 选项 |
+| link | 全局挂载库，比如一些所有项目都要挂载的库 `pthread`, `stdc++` 之类的，写在这里，就不用每个项目都写 |
+| define | 全局宏定义 |
+| flnk | 连接时传输的参数 |
+| wlnk | 连接时使用 `-Wl,` 前缀直接透传给 `ld` 工具的参数 |
+
+
+#### 配置导入
+
+在工具链配置的 ini 文件里，在非 `[default]` 区可以写一些额外配置：
+
+```ini
+[default]
+...
 
 [ffmpeg]
 include=d:/dev/local/opt/ffmpeg/include
 lib=d:/dev/local/opt/ffmpeg/lib
 link=avcodec, avdevice, avfilter, avformat, avutil, postproc, swscale
 
-
 [qt]
 include=D:/Dev/Qt/sdk/4.8.3-mingw/include;D:/Dev/Qt/sdk/4.8.3-mingw/include/QtGui
 lib=D:/Dev/Qt/sdk/4.8.3-mingw/lib
 link=stdc++, ole32, gdi32, wsock32, opengl32, gdi32, glu32, ws2_32, uuid, oleaut32, winmm, imm32, winspool, QtCore4, QtGui4, QtGuid4
 
-[qt45]
-include=D:/Dev/Qt/4.5.0-mingw-static/include;D:/Dev/Qt/4.5.0-mingw-static/include/QtGui
-lib=D:/Dev/Qt/4.5.0-mingw-static/lib
-link=stdc++, ole32, gdi32, wsock32, opengl32, gdi32, glu32, ws2_32, uuid, oleaut32, winmm, imm32, winspool, QtCore, QtGui
-
-
 ```
 
-默认区（default）作用于每一个工程文件，其中 cpu字段只能出现在默认区，它规定了编译时最多使用多少个核进行编译，其他区的话，需要在工程里使用 import 来导入：
+那么在项目配置里就可以使用 import 来导入：
 
 	import: qt, ffmpeg
 
 那么在你的工程里，上面 qt 和 ffmpeg 的相关配置就会被导入了。
 
+#### 系统包管理
 
-## Cross Compilation
+要引入一个包的话，除了用上面的配置导入外，还有一种方式是用 pkg-config，只需要在工程文件里用 `package` 语句即可：
 
-交叉编译的话，需要单独一个 ini 文件来规定工具链，比如我的 android交叉编译配置：
-
-```ini
-[default]
-flag=-Wall
-home=/path/to/android-toolchain/bin
-path=/path/to/android-toolchain/bin
-gcc=arm-linux-androideabi-gcc
-ar=arm-linux-androideabi-ar
-as=arm-linux-androideabi-as
-name=android,posix,arm
-cpu=4
+```make
+package: python3
 ```
 
-其中 home 规定了 ndk 工具链 gcc 环境所在的可执行路径，可以是绝对路径，或者是相对于 ini 配置文件的相对路径，后面同时定义了：gcc, ar, as 三个必须的可执行文件名，使用的时候：
+那么 Emake 会在构建前调用 `pkg-config` 查询 `python3` 这个包的各种编译信息，包括 CFLAGS, LDFLAGS 等，并追加到工程配置中。
 
-	emake --ini=d://android-toolchain/android-9/emake.ini xxx
+当然 pkg-config 依赖 `/usr/lib` 或者 `/usr/local/bin` 下面的 `.pc` 文件，比如：
 
-或者放到 `~/.config/emake/android-9.ini` 里面，用：
+```text
+./lib/x86_64-linux-gnu/pkgconfig/libxcrypt.pc
+./lib/x86_64-linux-gnu/pkgconfig/lua.pc
+./lib/x86_64-linux-gnu/pkgconfig/formw.pc
+./lib/x86_64-linux-gnu/pkgconfig/lua54.pc
+./lib/x86_64-linux-gnu/pkgconfig/lua5.4-c++.pc
+./lib/x86_64-linux-gnu/pkgconfig/python3.pc
+./lib/x86_64-linux-gnu/pkgconfig/ncurses++.pc
+./lib/x86_64-linux-gnu/pkgconfig/lua-5.4.pc
+```
 
-    emake --cfg=android-9 xxx
+这些 `.pc` 文件是在安装系统包或者编译第三方包时 `make install` 或者 `cmake --install` 命令生成的，主要用于指定各个包的 CFLAGS / LDFLAGS 等编译参数以及依赖关系。
 
-指定使用它，在 default 区中定义了很多 name ，这些 name 可以用来做工程文件的条件判断，比如：
+而 `pkg-config` 工具，能够加载这些文件处理好依赖并给出正确的 CFLAGS / LDFLAGS 编译参数。此外，在工程文件里，还可以给出 `pkg-config` 工具调用的额外参数：
 
-	android/flag: -mfloat-abi=softfp
-	posix/link: pthread
-	win32/link: winmm, wsock32, ws2_32
+```make
+pcflag: --atlatest-version, --env-only
+```
 
-不同的 ini 文件中定义的 name 不同，在工程文件中会判断是否定义过某个 name ，定义过的话，执行后面的话，如此在同一个工程文件中，可以针对不同平台定义源文件，设置编译参数。
+这也这个参数就会传递给 `pkg-config`。
+
+这是推荐的包导入方式，而如果一个包没有 `.pc` 文件，`pkg-config` 找不到的话，可以用上面的 `import` 方式导入一个工具链 ini 配置文件里的 section。
+
+
 
 ## Rapid Development
 
