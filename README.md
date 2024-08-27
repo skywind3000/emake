@@ -184,9 +184,17 @@ emake main.cpp
 
 即可，简单到了极点，特别适合验证一些小想法，做一些小实验，不用写一大堆乱七八糟的东西。
 
+#### 绝对路径
 
+为了避免有时编译错误输出时，文件名用的相对路径，造成外部编辑器无法正确解析，可以用 `--abs` 参数：
 
-## 项目配置
+```bash
+emake --abs main.cpp
+```
+
+这样错误输出中的文件名，就是绝对路径了。
+
+## 工程配置
 
 Emake 的工程文件里面支持下面几种核心设置：
 
@@ -470,7 +478,9 @@ target=win32
 | cpu | 后面跟一个数字，多核编译的核心数量 |
 | target | 目标平台名称，比如 `win32` 和 `linux`，不提供的话会使用 Python 的 `sys.platform` 作为默认值 |
 | name | 条件编译的条件变量名称，逗号分割，比如 "android,posix,nossl"，注意 target 的值会自动加入到 name 中，方便根据目标平台进行条件判断  |
-| pcpath | 包管理工具 `pkg-config` 的 `.pc` 文件搜索路径，即 `$PKG_CONFIG_PATH` 这个环境变量的值  |
+| environ | 逗号分隔的环境变量，比如 `environ=FOO=BAR,BARZ=1`，调用工具链前初始化 |
+| pcpath | 设置环境变量 `$PKG_CONFIG_PATH` |
+| pcflag | 设置 `pkg-config` 的公用参数 |
 
 上面的配置用于确定工具链的位置和运行方式，下面这些用于通用项目配置
 
@@ -541,7 +551,7 @@ package: python3
 而 `pkg-config` 工具，能够加载这些文件处理好依赖并给出正确的 CFLAGS / LDFLAGS 编译参数。此外，在工程文件里，还可以给出 `pkg-config` 工具调用的额外参数：
 
 ```make
-pcflag: --atlatest-version, --env-only
+pcflag: --atlatest-version
 ```
 
 这也这个参数就会传递给 `pkg-config`。
@@ -552,14 +562,18 @@ pcflag: --atlatest-version, --env-only
 [default]
 ...
 pcpath=D:/arm32-devkit/lib/pkgconfig
+pcflag=--env-only
 ...
 ```
 
-这样调用 `pkg-config` 前会先设置这个环境变量，控制 `pkg-config` 搜索 `.pc` 文件的位置，当然工程文件也可以配合指明下 `pcflag: --env-only` 跳过默认搜索路径。
+这样调用 `pkg-config` 前会先设置这个环境变量，控制 `pkg-config` 搜索 `.pc` 文件的位置，当然可以配合下一条 `pcflag=--env-only` 跳过默认搜索路径。
 
 通常情况下不用特别设置 `pcpath`，因为工具链自带的 `pkg-config` 一般能够根据自身位置正确搜索到工具链内的 `.pc` 文件的，除非你还有其他位置自己管理额外的 `.pc` 或者工具链不提供 `pkg-config` 工具，你需要依赖一个外部的 `pkg-config` 程序。
 
 这是推荐的包导入方式，而如果一个包没有 `.pc` 文件，`pkg-config` 找不到的话，可以用上面的 `import` 方式导入一个工具链 ini 配置文件里的 section。
+
+## 启动参数
+
 
 
 ## Rapid Development
