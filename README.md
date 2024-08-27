@@ -628,9 +628,7 @@ emake -commands hello.mak
 
 还有更多信息，具体见：`emake -h` 说明。
 
-## Credits
+## TODO
 
-本项目旧地址：
-
-https://code.google.com/archive/p/easymake/
+- [ ] 加入 PIP，支持 pip 一键安装。
 
