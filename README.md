@@ -432,7 +432,7 @@ Emake 支持多个工具链，每个工具链使用一个 ini 进行描述，不
 ```ini
 [default]
 home=d:/msys32/mingw32/bin
-path=d:/msys32/mingw32/bin;d:/gnutools/bin
+path=d:/msys32/mingw32/bin,d:/gnutools/bin
 
 flag=-Wall
 link=stdc++, winmm, wsock32, user32, ws2_32
@@ -474,7 +474,7 @@ target=win32
 | as | 汇编器工具名，同上 |
 | dllwrap | 动态库封装工具名，同上 |
 | pkgconfig | pkgconfig 工具名，默认为 `pkg-config` |
-| path | 调用工具时额外需要加入 `$PATH` 的路径，Windows 下用 `;` 分割，其他系统用 `:` 分割多个项目；很多工具链的 bin 目录并不会加入系统的 `$PATH`，但里面的工具又会互相调用，使用这个选项可以不污染外部环境变量，只有在 emake 进程里临时设置 `$PATH` 变量，干净一些 |
+| path | 调用工具时额外需要加入 `$PATH` 的路径，用 `,` 分割多个项目；很多工具链的 bin 目录并不会加入系统的 `$PATH`，但里面的工具又会互相调用，使用这个选项可以不污染外部环境变量，只有在 emake 进程里临时设置 `$PATH` 变量，干净一些 |
 | cpu | 后面跟一个数字，多核编译的核心数量 |
 | target | 目标平台名称，比如 `win32` 和 `linux`，不提供的话会使用 Python 的 `sys.platform` 作为默认值 |
 | name | 条件编译的条件变量名称，逗号分割，比如 "android,posix,nossl"，注意 target 的值会自动加入到 name 中，方便根据目标平台进行条件判断  |
