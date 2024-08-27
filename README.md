@@ -157,8 +157,34 @@ lib: /usr/local/opt/jdk/lib
 src: foo.c
 src: bar.c
 src: main.c
-
 ```
+
+#### 零工程文件
+
+写工程文件还是觉得累？没关系，上面所有工程配置都可以写在源文件里，使用 `//!` 开头的注释中，比如 main.cpp 中：
+
+```cpp
+#include <stdio.h>
+
+//! mode: exe
+//! flag: -Wall, -O3, -g
+//! link: m, pthread
+//! src: foo.c, bar.c
+int main(void) {
+    ...
+    return 0;
+}
+```
+
+源文件中 `//!` 开头的特殊注释会被 emake 提取，作为工程配置的内容。这个例子基本揽括了上面独立工程文件做的事情，当然 `src:` 部分 main.cpp 是会被自动加入的，不用额外写，然后构建时：
+
+```bash
+emake main.cpp
+```
+
+即可，简单到了极点，特别适合验证一些小想法，做一些小实验，不用写一大堆乱七八糟的东西。
+
+
 
 ## 项目配置
 
