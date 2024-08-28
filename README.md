@@ -452,12 +452,20 @@ Emake 支持多个工具链，每个工具链使用一个 ini 进行描述，不
 
 ```ini
 [default]
+# 工具链的 bin 目录，用于查找 gcc / clang 等工具
 home=d:/msys32/mingw32/bin
+# 当你有多套工具链时，不可能都加入 $PATH，这个配置可以让 emake 在
+# 构建时临时追加到 $PATH 前面，不污染外层父进程的环境变量
 path=d:/msys32/mingw32/bin,d:/gnutools/bin
 
+# 通用配置，免得每个工程文件写一遍
 flag=-Wall
 link=stdc++, winmm, wsock32, user32, ws2_32
+cflag=-std=c11
+cxxflag=-std=c++17
 
+# 针对 debug/release/static 三种 profile 得设置，使用
+# emake --profile=<name> xxx 在构建时指明使用啥 profile
 define@debug=_DEBUG=1
 define@release=_RELEASE=1
 define@static=_STATIC=1, _RELEASE=1
@@ -466,9 +474,14 @@ flag@debug=-Og, -g, -fno-omit-frame-pointer
 flag@release=-O3
 flag@static=-O3, -static
 
+# 多核编译
 cpu=4
 
+# 目标平台名称，不提供得话默认用 python 得 sys.platform 字符串代替
 target=win32
+
+# 条件编译时候的条件变量，在工程文件里可以用 win32/flag: xxx 来使用
+name=win32,nt
 ```
 
 配置都包括在 ini 的 `[default]` 区，其中第一行使用 `home` 定义了工具链的 `bin` 目录，在哪里将找到 `gcc`, `ar`, `as`, `ld` 等工具，可以用绝对路径，也可以用相对于 ini 文件的路径。
