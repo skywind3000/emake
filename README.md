@@ -193,7 +193,7 @@ src: main.c
 
 #### 零工程文件
 
-写工程文件还是觉得累？没关系，上面所有工程配置都可以用 **docstring** 的方式写在源文件里，使用 `//!` 开头的注释中，比如 main.cpp 中：
+写工程文件还是觉得累？没关系，上面所有工程配置都可以用 **docstring** 的方式写在源文件里，使用 `//!` 开头的注释中，比如 main.cpp 里：
 
 ```cpp
 #include <stdio.h>
@@ -475,7 +475,7 @@ Emake 支持多个工具链，每个工具链使用一个 ini 进行描述，不
 home=d:/msys32/mingw32/bin
 # 当你有多套工具链时，不可能都加入 $PATH，这个配置可以让 emake 在
 # 构建时临时追加到 $PATH 前面，不污染外层父进程的环境变量
-path=d:/msys32/mingw32/bin,d:/gnutools/bin
+path=d:/msys32/mingw32/bin,d:/msys32/usr/bin
 
 # 通用配置，免得每个工程文件写一遍
 flag=-Wall
@@ -500,7 +500,7 @@ cpu=4
 target=win32
 
 # 条件编译时候的条件变量，在工程文件里可以用 win32/flag: xxx 来使用
-name=win32,nt
+name=win32,nt,have_openssl
 ```
 
 配置都包括在 ini 的 `[default]` 区，其中第一行使用 `home` 定义了工具链的 `bin` 目录，在哪里将找到 `gcc`, `ar`, `as`, `ld` 等工具，可以用绝对路径，也可以用相对于 ini 文件的路径。
