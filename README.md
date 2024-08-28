@@ -477,7 +477,7 @@ flag@static=-O3, -static
 # 多核编译
 cpu=4
 
-# 目标平台名称，不提供得话默认用 python 得 sys.platform 字符串代替
+# 目标平台名称，不提供得话默认用 python 的 sys.platform 字符串代替
 target=win32
 
 # 条件编译时候的条件变量，在工程文件里可以用 win32/flag: xxx 来使用
