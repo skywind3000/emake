@@ -25,10 +25,23 @@ Emake 是为快速开发而生的，通过牺牲了部分灵活性，却换来�
 
 多年的开发中，emake 提高了各种大小项目的开发效率，自身也随着时间增加不断被完善和稳定。
 
+## Content
+
+- [Preface](#preface)
+- [Content](#content)
+- [Install](#install)
+- [快速开始](#快速开始)
+- [工程配置说明](#工程配置说明)
+- [工具链配置](#工具链配置)
+- [启动参数](#启动参数)
+- [快速开发](#快速开发)
+- [输出信息](#输出信息)
+- [TODO](#todo)
+
 
 ## Install
 
-#### Linux / Mac OS X: 
+#### Linux / Mac OS X
 
 ```bash
 wget http://skywind3000.github.io/emake/emake.py
@@ -37,7 +50,7 @@ sudo python emake.py -i
 
 运行上面两条指令，十秒内完成安装。emake 会拷贝自己到 /usr/local/bin 下面，后面直接使用 emake 指令操作。
 
-#### Windows:
+#### Windows
 	
 下载 emake.py，放到你的 mingw 根目录下（便于 emake 定位 gcc），并且添加到 PATH 环境变量，同级目录新建立一个 emake.cmd 文件，内容如下：
 
