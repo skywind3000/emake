@@ -464,7 +464,7 @@ link=stdc++, winmm, wsock32, user32, ws2_32
 cflag=-std=c11
 cxxflag=-std=c++17
 
-# 针对 debug/release/static 三种 profile 得设置，使用
+# 针对 debug/release/static 三种 profile 的设置，使用
 # emake --profile=<name> xxx 在构建时指明使用啥 profile
 define@debug=_DEBUG=1
 define@release=_RELEASE=1
