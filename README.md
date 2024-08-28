@@ -574,9 +574,41 @@ pcflag=--env-only
 
 ## 启动参数
 
+```text
+usage: "emake.py <action> [options] srcfile" (emake 3.7.3 Aug.27 2024 win32)
 
+actions  :  -b | -build      build project
+            -c | -compile    compile project
+            -l | -link       link project
+            -r | -rebuild    rebuild project
+            -e | -execute    execute project
+            -o | -out        show output file name
+            -d | -cmdline    call cmdline tool in given environ
+            -g | -cygwin     cygwin execute
+            -s | -cshell     cygwin shell
+            -i | -install    install emake on unix
+            -u | -update     update itself from github
+            -h | -help       show help page
 
-## Rapid Development
+            -home            display project home
+            -list            display project files
+            -objs            display obj files
+            -cflags          display compile flags
+            -depends         display dependencies
+            -dirty           display dirty files
+            -commands        display compile commands json
+
+options  :  --cfg={cfg}      load config from ~/.config/emake/{cfg}.ini
+            --ini={inipath}  load config from {inipath} directly
+            --profile={name} set profile to {name}
+            --print={n}      set verbose level: 0-3
+            --abs={0|1}      display absolute path in error messages
+
+Emake is a easy tool which controls the generation of executables and other
+non-source files of a program from the program's source files.
+```
+
+## 快速开发
 
 不管时 GNU Make 还是 cmake，亦或时其他构建系统，都需要你写一个专门的工程文件来描述该工程。对于大项目很正常，但是对于中小项目，特别时一些测试类项目，这真的太麻烦了。
 
