@@ -363,7 +363,7 @@ name=android,posix,arm,nossl
 ```make
 win32/link: pdcurses_wincon
 linux/link: ncurses, tinfo
-arm/src: arm_calculate.s
+arm/src: arm_calculate.c
 ```
 
 这两条语句代表不同平台 link 不同的库，`name` 可以不定义，它的默认值是 target，你可以只定义一个 target 不定义 name：
