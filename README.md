@@ -349,7 +349,7 @@ int: objs/$(target)
 
 ```ini
 [default]
-name=android,posix,nossl
+name=android,posix,arm,nossl
 ```
 
 每个名字代表一个条件，可以同时定义多个条件，然后在工程文件里使用：
@@ -363,6 +363,7 @@ name=android,posix,nossl
 ```make
 win32/link: pdcurses_wincon
 linux/link: ncurses, tinfo
+arm/src: arm_calculate.s
 ```
 
 这两条语句代表不同平台 link 不同的库，`name` 可以不定义，它的默认值是 target，你可以只定义一个 target 不定义 name：
