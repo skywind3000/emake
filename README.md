@@ -30,28 +30,9 @@ Emake 是为快速开发而生的，通过牺牲了部分灵活性，却换来�
 - [Preface](#preface)
 - [Content](#content)
 - [Install](#install)
-		- [Linux / Mac OS X](#linux--mac-os-x)
-		- [Windows](#windows)
 - [快速开始](#快速开始)
-		- [增加编译选项](#增加编译选项)
-		- [完整例子](#完整例子)
-		- [零工程文件](#零工程文件)
-		- [绝对路径](#绝对路径)
-		- [使用技巧](#使用技巧)
 - [工程配置说明](#工程配置说明)
-		- [添加源代码](#添加源代码)
-		- [目录设置](#目录设置)
-		- [连接静态库](#连接静态库)
-		- [目标格式](#目标格式)
-		- [临时目录](#临时目录)
-		- [条件编译](#条件编译)
-		- [编译配置](#编译配置)
-		- [事件机制](#事件机制)
 - [工具链配置](#工具链配置)
-		- [配置格式](#配置格式)
-		- [配置项目](#配置项目)
-		- [配置导入](#配置导入)
-		- [系统包管理](#系统包管理)
 - [启动参数](#启动参数)
 - [快速开发](#快速开发)
 - [输出信息](#输出信息)
@@ -228,7 +209,7 @@ emake --abs main.cpp
 
 #### 使用技巧
 
-- [vcpkg 如何集成到 emake?](https://github.com/skywind3000/emake/wiki/vcpkg-%E5%A6%82%E4%BD%95%E9%9B%86%E6%88%90%E5%88%B0-emake-%E4%B8%AD%EF%BC%9F)
+- [如何 vcpkg 集成到 emake 中？](https://github.com/skywind3000/emake/wiki/%E5%A6%82%E4%BD%95-vcpkg-%E9%9B%86%E6%88%90%E5%88%B0-emake-%E4%B8%AD%EF%BC%9F)
 - [如何交叉编译?](https://github.com/skywind3000/emake/wiki/%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91)
 
 更多技巧见 [Wiki Home](https://github.com/skywind3000/emake/wiki)。
