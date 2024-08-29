@@ -406,7 +406,7 @@ linux/out@debug: rogue-cloned
 
 Emake 支持为每个源代码文件设置不同的编译参数，格式是就是在 `src` 定义完源文件后，右边加冒号跟着参数即可：
 
-```
+```make
 src: main.c : -O3
 src: foo.c, bar.c : -DTEST
 ```
