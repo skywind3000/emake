@@ -213,7 +213,7 @@ emake --abs main.cpp
 - [如何进行交叉编译?](https://github.com/skywind3000/emake/wiki/%E5%A6%82%E4%BD%95%E9%85%8D%E7%BD%AE%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91%EF%BC%9F)
 - [如何在 Windows 项目中添加 RC 文件？](https://github.com/skywind3000/emake/wiki/%E5%A6%82%E4%BD%95%E5%9C%A8-Windows-%E9%A1%B9%E7%9B%AE%E4%B8%AD%E6%B7%BB%E5%8A%A0-RC-%E6%96%87%E4%BB%B6%EF%BC%9F)
 
-更多技巧见 [常见问题集](https://github.com/skywind3000/emake/wiki/Frequently-Asked-Questions)。
+更多技巧见 “[FAQ：常见问题集](https://github.com/skywind3000/emake/wiki/Frequently-Asked-Questions)” 的 wiki 页面。
 
 
 ## 工程配置说明
