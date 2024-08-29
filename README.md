@@ -438,6 +438,24 @@ postbuild: echo "postbuild"
 
 比如某个源代码是使用其他工具生成的，放到 `prebuild` 时，应为处于依赖分析之后，初次构建尚未触发生成代码前面依赖分析就会报找不到文件了，但 `preload` 在依赖分析之前运行。
 
+在事件运行时，可以从环境变量中读取一些信息：
+
+- `$EMAKE_MAIN`: 工程文件路径。
+- `$EMAKE_OUT`: 输出文件路径。
+- `$EMAKE_MODE`: 模式，可执行还是动态库。
+- `$EMAKE_SCRIPT`: 脚本（emake.py）的路径。
+- `$EMAKE_HOME`: 工程文件所在目录，即 `$EMAKE_MAIN` 的 dirname。
+- `$EMAKE_INT`: 中间文件的目录。
+- `$EMAKE_TOOLCHAIN`: 工具链的目录。
+
+比如 Windows 下面：
+
+```make
+postbuild: echo %EMAKE_OUT%
+```
+
+就能每次编译后显示输出文件的路径了。
+
 
 ## 工具链配置
 
