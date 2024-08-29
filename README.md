@@ -447,6 +447,7 @@ postbuild: echo "postbuild"
 - `$EMAKE_HOME`: 工程文件所在目录，即 `$EMAKE_MAIN` 的 dirname。
 - `$EMAKE_INT`: 中间文件的目录。
 - `$EMAKE_TOOLCHAIN`: 工具链的目录。
+- `$EMAKE_TARGET`: 目标平台。
 
 比如 Windows 下面：
 
