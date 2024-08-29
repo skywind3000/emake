@@ -591,9 +591,9 @@ package: python3
 ./lib/x86_64-linux-gnu/pkgconfig/lua-5.4.pc
 ```
 
-这些 `.pc` 文件是在安装系统包或者编译第三方包时 `make install` 或者 `cmake --install` 命令生成的，主要用于指定各个包的 CFLAGS / LDFLAGS 等编译参数以及依赖关系。
+这些 `.pc` 文件是在安装系统包或者编译第三方包时 `make install` 或者 `cmake --install` 命令生成的，主要用于指定各个包的 `CFLAGS` / `LDFLAGS` 等编译参数以及依赖关系。
 
-而 `pkg-config` 工具，能够加载这些文件处理好依赖并给出正确的 CFLAGS / LDFLAGS 编译参数。此外，在工程文件里，还可以给出 `pkg-config` 工具调用的额外参数：
+而 `pkg-config` 工具，能够加载这些文件处理好依赖并给出正确的 `CFLAGS` / `LDFLAGS` 编译参数。此外，在工程文件里，还可以给出 `pkg-config` 工具调用的额外参数：
 
 ```make
 pcflag: --atlatest-version
