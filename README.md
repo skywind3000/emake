@@ -365,14 +365,16 @@ win32/link: pdcurses_wincon
 linux/link: ncurses, tinfo
 ```
 
-这两条语句代表不同平台 link 不同的库，目标平台名称无需声明，会自动添加到 name 中，可以在 emake.ini 中用：
+这两条语句代表不同平台 link 不同的库，`name` 可以不定义，它的默认值是 target，你可以只定义一个 target 不定义 name：
 
 ```ini
 [default]
 target=android
 ```
 
-手工指明目标平台的名称，默认的话，会使用 python 里的 `sys.platform` 返回值。
+这样手工指明目标平台的名称，默认的话，会使用 python 里的 `sys.platform` 返回值。同时你又没有定义过 `name` 项目，那么 `name` 的默认值就是 `target`，除非你和上面一样手工定义 `name`，就能覆盖默认值。
+
+所以 `name` 只有一个时，一般不定义，用默认值即可，但有多个 `name` 时需要定义下。
 
 #### 编译配置
 
