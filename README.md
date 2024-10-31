@@ -25,7 +25,9 @@ Emake 是为快速开发而生的，通过牺牲了部分灵活性，却换来�
 
 多年的开发中，emake 提高了各种大小项目的开发效率，自身也随着时间增加不断被完善和稳定。
 
-具体好用在哪里，实际使用比 cmake/xmake 简单在哪里？可以看这个介绍：[Emake：你见过最简单的 C/C++ 构建工具](https://skywind.me/blog/archives/2768)。
+具体好用在哪里，实际使用比 cmake/xmake 简单在哪里？可以看这个介绍：
+
+[Emake：你见过最简单的 C/C++ 构建工具](https://skywind.me/blog/archives/2768)。
 
 
 ## Content
