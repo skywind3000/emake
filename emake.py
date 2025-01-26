@@ -3432,7 +3432,7 @@ def install():
 __updated_files = {}
 
 def __update_file(name, content):
-    source = ''
+    source = b''
     name = os.path.abspath(name)
     if name in __updated_files:
         return 0
@@ -3442,7 +3442,7 @@ def __update_file(name, content):
         source = fp.read()
         fp.close()
     except:
-        source = ''
+        source = b''
     if not isinstance(content, bytes):
         rawdata = content.encoding('utf-8', 'ignore')
     else:
