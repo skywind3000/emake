@@ -35,6 +35,7 @@ Emake 是为快速开发而生的，通过牺牲了部分灵活性，却换来�
 - [Preface](#preface)
 - [Content](#content)
 - [Install](#install)
+    - [PIP](#pip)
     - [Linux / Mac OS X](#linux--mac-os-x)
     - [Windows](#windows)
 - [快速开始](#快速开始)
@@ -65,6 +66,21 @@ Emake 是为快速开发而生的，通过牺牲了部分灵活性，却换来�
 
 
 ## Install
+
+#### PIP
+
+```bash
+pip install emake-build
+```
+
+安装后即可直接使用 `emake` 命令：
+
+```bash
+emake -h
+emake main.cpp
+```
+
+注意：PIP 只安装 emake 本身，不会安装 gcc / clang / mingw 等 C/C++ 工具链。
 
 #### Linux / Mac OS X
 
@@ -774,5 +790,4 @@ emake -commands hello.mak
 
 ## TODO
 
-- [ ] 加入 PIP，支持 pip 一键安装。
-
+- [x] 加入 PIP，支持 pip 一键安装。

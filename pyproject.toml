@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "emake-build"
+version = "3.7.11"
+description = "A simple C/C++ build tool"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" }
+authors = [
+    { name = "skywind3000" }
+]
+dependencies = []
+keywords = ["build", "c", "cpp", "make", "gcc", "clang"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+    "Natural Language :: Chinese (Simplified)",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: C",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Build Tools",
+]
+
+[project.urls]
+Homepage = "https://github.com/skywind3000/emake"
+Repository = "https://github.com/skywind3000/emake"
+Issues = "https://github.com/skywind3000/emake/issues"
+
+[project.scripts]
+emake = "emake:main"
+
+[tool.setuptools]
+py-modules = ["emake"]
